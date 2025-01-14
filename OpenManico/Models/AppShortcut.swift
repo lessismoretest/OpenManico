@@ -24,6 +24,7 @@ class AppSettings: ObservableObject {
     @Published var launchAtLogin: Bool = false
     @Published var totalUsageCount: Int = 0
     @Published var showFloatingWindow: Bool = true
+    @Published var showWebShortcutsInFloatingWindow: Bool = false
     
     static let shared = AppSettings()
     
@@ -32,6 +33,7 @@ class AppSettings: ObservableObject {
     private let launchAtLoginKey = "LaunchAtLogin"
     private let usageCountKey = "UsageCount"
     private let showFloatingWindowKey = "ShowFloatingWindow"
+    private let showWebShortcutsInFloatingWindowKey = "ShowWebShortcutsInFloatingWindow"
     
     private init() {
         loadSettings()
@@ -51,6 +53,7 @@ class AppSettings: ObservableObject {
         
         totalUsageCount = UserDefaults.standard.integer(forKey: usageCountKey)
         showFloatingWindow = UserDefaults.standard.bool(forKey: showFloatingWindowKey)
+        showWebShortcutsInFloatingWindow = UserDefaults.standard.bool(forKey: showWebShortcutsInFloatingWindowKey)
     }
     
     func saveSettings() {
@@ -60,6 +63,7 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(theme.rawValue, forKey: themeKey)
         UserDefaults.standard.set(totalUsageCount, forKey: usageCountKey)
         UserDefaults.standard.set(showFloatingWindow, forKey: showFloatingWindowKey)
+        UserDefaults.standard.set(showWebShortcutsInFloatingWindow, forKey: showWebShortcutsInFloatingWindowKey)
     }
     
     func incrementUsageCount() {

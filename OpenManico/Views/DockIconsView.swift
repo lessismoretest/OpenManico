@@ -5,21 +5,57 @@ import SwiftUI
  */
 struct DockIconsView: View {
     @StateObject private var settings = AppSettings.shared
+    @StateObject private var hotKeyManager = HotKeyManager.shared
+    @State private var webIcons: [String: NSImage] = [:]
     
     var body: some View {
-        HStack(spacing: 12) {
-            ForEach(settings.shortcuts.sorted(by: { $0.key < $1.key })) { shortcut in
-                if let app = NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first,
-                   let icon = app.icon {
-                    VStack(spacing: 4) {
-                        Image(nsImage: icon)
-                            .resizable()
-                            .frame(width: 48, height: 48)
-                            .cornerRadius(8)
-                        
-                        Text(shortcut.key)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white)
+        VStack(spacing: 16) {
+            // 应用程序图标
+            HStack(spacing: 12) {
+                ForEach(settings.shortcuts.sorted(by: { $0.key < $1.key })) { shortcut in
+                    if let app = NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first,
+                       let icon = app.icon {
+                        VStack(spacing: 4) {
+                            Image(nsImage: icon)
+                                .resizable()
+                                .frame(width: 48, height: 48)
+                                .cornerRadius(8)
+                            
+                            Text(shortcut.key)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                        }
+                    }
+                }
+            }
+            
+            // 网站快捷键图标
+            if settings.showWebShortcutsInFloatingWindow && !hotKeyManager.webShortcutManager.shortcuts.isEmpty {
+                Divider()
+                    .background(Color.white.opacity(0.3))
+                
+                HStack(spacing: 12) {
+                    ForEach(hotKeyManager.webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key })) { shortcut in
+                        VStack(spacing: 4) {
+                            if let icon = webIcons[shortcut.key] {
+                                Image(nsImage: icon)
+                                    .resizable()
+                                    .frame(width: 32, height: 32)
+                                    .cornerRadius(4)
+                            } else {
+                                Image(systemName: "globe")
+                                    .resizable()
+                                    .frame(width: 32, height: 32)
+                                    .foregroundColor(.white)
+                            }
+                            
+                            Text("⌘\(shortcut.key)")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.white)
+                        }
+                        .onAppear {
+                            loadWebIcon(for: shortcut)
+                        }
                     }
                 }
             }
@@ -28,6 +64,14 @@ struct DockIconsView: View {
         .background {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.black.opacity(0.8))
+        }
+    }
+    
+    private func loadWebIcon(for shortcut: WebShortcut) {
+        shortcut.fetchIcon { fetchedIcon in
+            if let icon = fetchedIcon {
+                webIcons[shortcut.key] = icon
+            }
         }
     }
 }
