@@ -26,7 +26,7 @@ struct SettingsView: View {
                     }
                 
                 HStack {
-                    Text("导出设置")
+                    Text("导出快捷键设置")
                     Spacer()
                     Button(action: {
                         showingExportDialog = true
