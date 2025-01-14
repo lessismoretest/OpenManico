@@ -7,7 +7,7 @@
 
 OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过 Option + 数字/字母键快速切换应用程序，提高工作效率。
 
-**重要：致敬 Manico（https://manico.im/），有能力的还是支持下原作者！**
+**重要：致敬 Manico [https://manico.im/](https://manico.im/)，有能力的还是支持下原作者！
 
 如有侵权，请联系我下架！纯免费应用，无任何收费项目！
 
