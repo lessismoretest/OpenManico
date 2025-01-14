@@ -39,7 +39,7 @@ class HotKeyManager: ObservableObject {
     // Option 键长按计时器
     private var optionKeyTimer: Timer?
     private var isOptionKeyPressed = false
-    private var isTabMonitoringEnabled = false
+    private var isCommandKeyPressed = false
     
     init() {
         setupEventHandler()
@@ -261,7 +261,12 @@ class HotKeyManager: ObservableObject {
                   event.keyCode == 0x30 // Tab 键的键码
             else { return }
             
-            AppSettings.shared.selectNextShortcut()
+            // 根据是否按下 Command 键来决定选择应用还是网站
+            if self.isCommandKeyPressed {
+                AppSettings.shared.selectNextWebShortcut()
+            } else {
+                AppSettings.shared.selectNextShortcut()
+            }
         }
     }
     
@@ -271,7 +276,11 @@ class HotKeyManager: ObservableObject {
     private func setupOptionKeyMonitor() {
         NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
             let optionKeyPressed = event.modifierFlags.contains(.option)
+            let commandKeyPressed = event.modifierFlags.contains(.command)
             guard let self = self else { return }
+            
+            // 更新 Command 键状态
+            self.isCommandKeyPressed = commandKeyPressed
             
             if optionKeyPressed && !self.isOptionKeyPressed {
                 // Option 键被按下
@@ -293,10 +302,15 @@ class HotKeyManager: ObservableObject {
                 self.optionKeyTimer = nil
                 DispatchQueue.main.async {
                     DockIconsWindowController.shared.hideWindow()
-                    // 如果有选中的应用，则打开它
-                    if let shortcut = AppSettings.shared.selectedShortcut {
+                    
+                    // 根据选中状态打开应用或网站
+                    if let webShortcut = AppSettings.shared.selectedWebShortcut,
+                       let url = URL(string: webShortcut.url) {
+                        NSWorkspace.shared.open(url)
+                    } else if let shortcut = AppSettings.shared.selectedShortcut {
                         self.switchToApp(bundleIdentifier: shortcut.bundleIdentifier)
                     }
+                    
                     AppSettings.shared.resetSelection() // 重置选中状态
                 }
             }

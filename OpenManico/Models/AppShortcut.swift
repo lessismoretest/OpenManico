@@ -26,6 +26,7 @@ class AppSettings: ObservableObject {
     @Published var showFloatingWindow: Bool = true
     @Published var showWebShortcutsInFloatingWindow: Bool = false
     @Published var selectedShortcutIndex: Int = -1
+    @Published var selectedWebShortcutIndex: Int = -1
     
     static let shared = AppSettings()
     
@@ -124,6 +125,7 @@ class AppSettings: ObservableObject {
     
     func resetSelection() {
         selectedShortcutIndex = -1
+        selectedWebShortcutIndex = -1
     }
     
     func selectNextShortcut() {
@@ -137,11 +139,30 @@ class AppSettings: ObservableObject {
         }
     }
     
+    func selectNextWebShortcut() {
+        let sortedWebShortcuts = HotKeyManager.shared.webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key })
+        if sortedWebShortcuts.isEmpty { return }
+        
+        if selectedWebShortcutIndex == -1 {
+            selectedWebShortcutIndex = 0
+        } else {
+            selectedWebShortcutIndex = (selectedWebShortcutIndex + 1) % sortedWebShortcuts.count
+        }
+    }
+    
     var selectedShortcut: AppShortcut? {
         let sortedShortcuts = shortcuts.sorted(by: { $0.key < $1.key })
         guard selectedShortcutIndex >= 0 && selectedShortcutIndex < sortedShortcuts.count else {
             return nil
         }
         return sortedShortcuts[selectedShortcutIndex]
+    }
+    
+    var selectedWebShortcut: WebShortcut? {
+        let sortedWebShortcuts = HotKeyManager.shared.webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key })
+        guard selectedWebShortcutIndex >= 0 && selectedWebShortcutIndex < sortedWebShortcuts.count else {
+            return nil
+        }
+        return sortedWebShortcuts[selectedWebShortcutIndex]
     }
 } 

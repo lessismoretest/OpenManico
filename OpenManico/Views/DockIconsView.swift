@@ -39,19 +39,25 @@ struct DockIconsView: View {
                     .background(Color.white.opacity(0.3))
                 
                 HStack(spacing: 12) {
-                    ForEach(hotKeyManager.webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key })) { shortcut in
+                    ForEach(Array(hotKeyManager.webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key }).enumerated()), id: \.element.id) { index, shortcut in
                         VStack(spacing: 4) {
-                            if let icon = webIcons[shortcut.key] {
-                                Image(nsImage: icon)
-                                    .resizable()
-                                    .frame(width: 32, height: 32)
-                                    .cornerRadius(4)
-                            } else {
-                                Image(systemName: "globe")
-                                    .resizable()
-                                    .frame(width: 32, height: 32)
-                                    .foregroundColor(.white)
+                            Group {
+                                if let icon = webIcons[shortcut.key] {
+                                    Image(nsImage: icon)
+                                        .resizable()
+                                        .frame(width: 32, height: 32)
+                                } else {
+                                    Image(systemName: "globe")
+                                        .resizable()
+                                        .frame(width: 32, height: 32)
+                                        .foregroundColor(.white)
+                                }
                             }
+                            .cornerRadius(4)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color.white, lineWidth: settings.selectedWebShortcutIndex == index ? 2 : 0)
+                            )
                             
                             Text("⌘\(shortcut.key)")
                                 .font(.system(size: 10, weight: .medium))
