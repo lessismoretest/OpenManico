@@ -194,6 +194,9 @@ class HotKeyManager {
     func switchToApp(bundleIdentifier: String) {
         print("Attempting to switch to app with bundle ID: \(bundleIdentifier)")
         
+        // 增加使用次数
+        AppSettings.shared.incrementUsageCount()
+        
         // 先尝试激活已运行的应用
         if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
             let success = app.activate(options: [.activateIgnoringOtherApps])

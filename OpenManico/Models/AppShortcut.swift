@@ -22,16 +22,17 @@ class AppSettings: ObservableObject {
     @Published var shortcuts: [AppShortcut] = []
     @Published var theme: AppTheme = .system
     @Published var launchAtLogin: Bool = false
+    @Published var totalUsageCount: Int = 0
     
     static let shared = AppSettings()
     
     private let shortcutsKey = "AppShortcuts"
     private let themeKey = "AppTheme"
     private let launchAtLoginKey = "LaunchAtLogin"
+    private let usageCountKey = "UsageCount"
     
     private init() {
         loadSettings()
-        // 初始化时检查自启动状态
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
     
@@ -45,6 +46,8 @@ class AppSettings: ObservableObject {
            let theme = AppTheme(rawValue: themeString) {
             self.theme = theme
         }
+        
+        totalUsageCount = UserDefaults.standard.integer(forKey: usageCountKey)
     }
     
     func saveSettings() {
@@ -52,6 +55,12 @@ class AppSettings: ObservableObject {
             UserDefaults.standard.set(data, forKey: shortcutsKey)
         }
         UserDefaults.standard.set(theme.rawValue, forKey: themeKey)
+        UserDefaults.standard.set(totalUsageCount, forKey: usageCountKey)
+    }
+    
+    func incrementUsageCount() {
+        totalUsageCount += 1
+        UserDefaults.standard.set(totalUsageCount, forKey: usageCountKey)
     }
     
     func toggleLaunchAtLogin() {
