@@ -2,11 +2,15 @@ import Foundation
 import Carbon
 import AppKit
 
-class HotKeyManager {
+/**
+ * 热键管理器
+ */
+class HotKeyManager: ObservableObject {
     static let shared = HotKeyManager()
     private var eventHandler: EventHandlerRef?
     private var hotKeyRefs: [EventHotKeyRef?] = []
     private var lastActiveApp: NSRunningApplication?
+    @Published var webShortcutManager = WebShortcutManager()
     
     // 数字键的键码映射
     private let numberKeyCodes: [Int: Int] = [
@@ -23,35 +27,16 @@ class HotKeyManager {
     
     // 字母键的键码映射
     private let letterKeyCodes: [String: Int] = [
-        "A": 0x00,
-        "B": 0x0B,
-        "C": 0x08,
-        "D": 0x02,
-        "E": 0x0E,
-        "F": 0x03,
-        "G": 0x05,
-        "H": 0x04,
-        "I": 0x22,
-        "J": 0x26,
-        "K": 0x28,
-        "L": 0x25,
-        "M": 0x2E,
-        "N": 0x2D,
-        "O": 0x1F,
-        "P": 0x23,
-        "Q": 0x0C,
-        "R": 0x0F,
-        "S": 0x01,
-        "T": 0x11,
-        "U": 0x20,
-        "V": 0x09,
-        "W": 0x0D,
-        "X": 0x07,
-        "Y": 0x10,
-        "Z": 0x06
+        "A": 0x00, "B": 0x0B, "C": 0x08, "D": 0x02,
+        "E": 0x0E, "F": 0x03, "G": 0x05, "H": 0x04,
+        "I": 0x22, "J": 0x26, "K": 0x28, "L": 0x25,
+        "M": 0x2E, "N": 0x2D, "O": 0x1F, "P": 0x23,
+        "Q": 0x0C, "R": 0x0F, "S": 0x01, "T": 0x11,
+        "U": 0x20, "V": 0x09, "W": 0x0D, "X": 0x07,
+        "Y": 0x10, "Z": 0x06
     ]
     
-    private init() {
+    init() {
         setupEventHandler()
     }
     
@@ -62,12 +47,16 @@ class HotKeyManager {
         }
     }
     
+    /**
+     * 设置事件处理器
+     */
     private func setupEventHandler() {
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
             eventKind: OSType(kEventHotKeyPressed)
         )
         
+        var handlerRef: EventHandlerRef?
         let status = InstallEventHandler(
             GetEventMonitorTarget(),
             { (_, event, _) -> OSStatus in
@@ -93,11 +82,12 @@ class HotKeyManager {
             1,
             &eventType,
             nil,
-            &eventHandler
+            &handlerRef
         )
         
         if status == noErr {
             print("Event handler installed successfully")
+            self.eventHandler = handlerRef
             registerAllHotKeys()
         } else {
             print("Failed to install event handler: \(status)")
@@ -126,22 +116,37 @@ class HotKeyManager {
         
         var hotKeyRef: EventHotKeyRef?
         
-        let modifiers: UInt32 = UInt32(optionKey)
-        
-        let status = RegisterEventHotKey(
+        // 注册 Option 快捷键
+        let optionModifier: UInt32 = UInt32(optionKey)
+        let status1 = RegisterEventHotKey(
             UInt32(keyCode),
-            modifiers,
+            optionModifier,
             hotKeyID,
             GetEventMonitorTarget(),
             0,
             &hotKeyRef
         )
         
-        if status == noErr {
+        if status1 == noErr {
             hotKeyRefs.append(hotKeyRef)
-            print("Successfully registered hotkey for ID \(id)")
-        } else {
-            print("Failed to register hotkey for ID \(id), error: \(status)")
+            print("Successfully registered Option hotkey for ID \(id)")
+        }
+        
+        // 注册 Option + Command 快捷键
+        let optionCommandModifier: UInt32 = UInt32(optionKey | cmdKey)
+        var webHotKeyRef: EventHotKeyRef?
+        let status2 = RegisterEventHotKey(
+            UInt32(keyCode),
+            optionCommandModifier,
+            EventHotKeyID(signature: OSType(id + 1000), id: UInt32(id + 1000)),
+            GetEventMonitorTarget(),
+            0,
+            &webHotKeyRef
+        )
+        
+        if status2 == noErr {
+            hotKeyRefs.append(webHotKeyRef)
+            print("Successfully registered Option+Command hotkey for ID \(id)")
         }
     }
     
@@ -161,32 +166,39 @@ class HotKeyManager {
         DispatchQueue.main.async {
             // 将 ID 转换为对应的键
             let key: String
-            if number <= 9 {
-                key = String(number)
+            let isWebShortcut = number >= 1000
+            let actualNumber = isWebShortcut ? number - 1000 : number
+            
+            if actualNumber <= 9 {
+                key = String(actualNumber)
             } else {
-                // 对于字母键，将 ID 转换回字母
-                // ID = 10 + ASCII值，所以需要减去10再转换
-                key = String(UnicodeScalar(number - 10)!)
+                key = String(UnicodeScalar(actualNumber - 10)!)
             }
             
-            if let shortcut = AppSettings.shared.shortcuts.first(where: { $0.key == key }) {
-                print("Found shortcut for key \(key): \(shortcut.appName)")
-                
-                // 检查当前活跃的应用是否是目标应用
-                if let currentApp = NSWorkspace.shared.frontmostApplication,
-                   currentApp.bundleIdentifier == shortcut.bundleIdentifier {
-                    // 如果是，则切换回上一个应用
-                    if let lastApp = self.lastActiveApp {
-                        print("Switching back to previous app: \(lastApp.localizedName ?? "")")
-                        self.switchToApp(bundleIdentifier: lastApp.bundleIdentifier ?? "")
-                    }
-                } else {
-                    // 如果不是，则记录当前应用并切换到目标应用
-                    self.lastActiveApp = NSWorkspace.shared.frontmostApplication
-                    self.switchToApp(bundleIdentifier: shortcut.bundleIdentifier)
+            if isWebShortcut {
+                // 处理网站快捷键 (Option + Command)
+                if let shortcut = self.webShortcutManager.shortcuts.first(where: { $0.key == key && $0.isEnabled }),
+                   let url = URL(string: shortcut.url) {
+                    NSWorkspace.shared.open(url)
                 }
             } else {
-                print("No shortcut found for key \(key)")
+                // 处理应用程序快捷键 (Option)
+                if let shortcut = AppSettings.shared.shortcuts.first(where: { $0.key == key }) {
+                    print("Found shortcut for key \(key): \(shortcut.appName)")
+                    
+                    if let currentApp = NSWorkspace.shared.frontmostApplication,
+                       currentApp.bundleIdentifier == shortcut.bundleIdentifier {
+                        if let lastApp = self.lastActiveApp {
+                            print("Switching back to previous app: \(lastApp.localizedName ?? "")")
+                            self.switchToApp(bundleIdentifier: lastApp.bundleIdentifier ?? "")
+                        }
+                    } else {
+                        self.lastActiveApp = NSWorkspace.shared.frontmostApplication
+                        self.switchToApp(bundleIdentifier: shortcut.bundleIdentifier)
+                    }
+                } else {
+                    print("No shortcut found for key \(key)")
+                }
             }
         }
     }

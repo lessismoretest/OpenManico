@@ -5,28 +5,25 @@ struct ContentView: View {
     @State private var selectedTab = 0
     
     var body: some View {
-        NavigationSplitView {
-            List(selection: $selectedTab) {
+        NavigationView {
+            List {
                 NavigationLink(destination: ShortcutsView()) {
-                    Label("快捷键设置", systemImage: "keyboard")
+                    Label("App快捷键", systemImage: "keyboard")
                 }
-                .tag(0)
+                
+                NavigationLink(destination: WebShortcutsView()) {
+                    Label("网站快捷键", systemImage: "globe")
+                }
                 
                 NavigationLink(destination: SettingsView()) {
                     Label("通用设置", systemImage: "gear")
                 }
-                .tag(1)
             }
             .listStyle(SidebarListStyle())
-            .frame(width: 200)
-        } detail: {
-            if selectedTab == 0 {
-                ShortcutsView()
-            } else {
-                SettingsView()
-            }
+            .frame(minWidth: 200)
+            
+            Text("选择左侧选项进行设置")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 900, height: 600)
-        .navigationSplitViewStyle(.automatic)
     }
 } 

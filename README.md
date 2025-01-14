@@ -2,10 +2,10 @@
 
 <div align="center">
   <img src="OpenManico/Assets.xcassets/AppIcon.appiconset/mac128.png" width="128" height="128" alt="OpenManico Icon">
-  <p><strong>MacOS App 快捷启动工具</strong></p>
+  <p><strong>MacOS App/Web 快捷启动工具</strong></p>
 </div>
 
-OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过 Option + 数字/字母键快速切换应用程序，提高工作效率。
+OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过 Option + 数字/字母键快速切换应用程序，Option + Command + 数字/字母键快速打开网站，提高工作效率。
 
 **重要：致敬 Manico [https://manico.im/](https://manico.im/)，有能力的还是支持下原作者！
 
@@ -14,9 +14,11 @@ OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过
 ## 应用截图
 
 <div align="center">
-  <img src="Screenshots/home.png" width="800" alt="快捷键设置界面">  
+  <img src="Screenshots/home.png" width="800" alt="App 快捷键设置界面">  
   <img src="Screenshots/searchapp.png" width="800" alt="通用设置界面">
   <p><em>快捷键设置界面</em></p>
+  <img src="Screenshots/webset.png" width="800" alt="网站快捷键设置界面">
+  <p><em>网站快捷键设置界面</em></p>
   <img src="Screenshots/setting.png" width="800" alt="通用设置界面">
   <p><em>通用设置界面</em></p>
 </div>
@@ -24,6 +26,7 @@ OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过
 ## 特性
 
 - 🚀 快速切换：使用 Option + 数字键(1-9)或字母键(A-Z)快速切换应用
+- 🌐 网站快捷键：使用 Option + Command + 数字键(1-9)或字母键(A-Z)快速打开网站
 - 🔄 双向切换：再次按下相同快捷键可返回上一个应用
 - 🎨 主题切换：支持浅色/深色主题，可跟随系统
 - ⚡️ 性能优异：后台运行，资源占用极低
@@ -51,10 +54,17 @@ OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过
 
 ## 使用方法
 
-1. 打开应用后，在左侧选择"快捷键设置"
-2. 点击"选择应用"为数字键或字母键绑定目标应用
-3. 使用 Option + 对应按键切换到目标应用
-4. 在目标应用中再次按下相同快捷键可返回上一个应用
+1. 应用快捷键设置：
+   - 打开应用后，在左侧选择"App快捷键"
+   - 点击"选择应用"为数字键或字母键绑定目标应用
+   - 使用 Option + 对应按键切换到目标应用
+   - 在目标应用中再次按下相同快捷键可返回上一个应用
+
+2. 网站快捷键设置：
+   - 在左侧选择"网站快捷键"
+   - 在对应的数字键或字母键行输入目标网址
+   - 使用 Option + Command + 对应按键快速打开网站
+   - 支持网站图标显示，方便识别
 
 ## 权限说明
 
