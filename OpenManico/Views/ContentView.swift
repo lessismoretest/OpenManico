@@ -15,6 +15,10 @@ struct ContentView: View {
                     Label("网站快捷键", systemImage: "globe")
                 }
                 
+                NavigationLink(destination: FloatingWindowSettingsView()) {
+                    Label("悬浮窗", systemImage: "rectangle.on.rectangle")
+                }
+                
                 NavigationLink(destination: SettingsView()) {
                     Label("通用设置", systemImage: "gear")
                 }

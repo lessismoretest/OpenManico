@@ -36,8 +36,13 @@ class HotKeyManager: ObservableObject {
         "Y": 0x10, "Z": 0x06
     ]
     
+    // Option 键长按计时器
+    private var optionKeyTimer: Timer?
+    private var isOptionKeyPressed = false
+    
     init() {
         setupEventHandler()
+        setupOptionKeyMonitor()
     }
     
     deinit {
@@ -45,6 +50,7 @@ class HotKeyManager: ObservableObject {
         if let handler = eventHandler {
             RemoveEventHandler(handler)
         }
+        optionKeyTimer?.invalidate()
     }
     
     /**
@@ -240,6 +246,38 @@ class HotKeyManager: ObservableObject {
             }
         } else {
             print("Could not find app with bundle ID: \(bundleIdentifier)")
+        }
+    }
+    
+    /**
+     * 设置 Option 键监听
+     */
+    private func setupOptionKeyMonitor() {
+        NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
+            let optionKeyPressed = event.modifierFlags.contains(.option)
+            guard let self = self else { return }
+            
+            if optionKeyPressed && !self.isOptionKeyPressed {
+                // Option 键被按下
+                self.isOptionKeyPressed = true
+                self.optionKeyTimer?.invalidate()
+                self.optionKeyTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+                    // Option 键长按超过 0.5 秒
+                    DispatchQueue.main.async {
+                        if AppSettings.shared.showFloatingWindow {
+                            DockIconsWindowController.shared.showWindow()
+                        }
+                    }
+                }
+            } else if !optionKeyPressed && self.isOptionKeyPressed {
+                // Option 键被释放
+                self.isOptionKeyPressed = false
+                self.optionKeyTimer?.invalidate()
+                self.optionKeyTimer = nil
+                DispatchQueue.main.async {
+                    DockIconsWindowController.shared.hideWindow()
+                }
+            }
         }
     }
 } 

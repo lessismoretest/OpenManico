@@ -23,6 +23,7 @@ class AppSettings: ObservableObject {
     @Published var theme: AppTheme = .system
     @Published var launchAtLogin: Bool = false
     @Published var totalUsageCount: Int = 0
+    @Published var showFloatingWindow: Bool = true
     
     static let shared = AppSettings()
     
@@ -30,6 +31,7 @@ class AppSettings: ObservableObject {
     private let themeKey = "AppTheme"
     private let launchAtLoginKey = "LaunchAtLogin"
     private let usageCountKey = "UsageCount"
+    private let showFloatingWindowKey = "ShowFloatingWindow"
     
     private init() {
         loadSettings()
@@ -48,6 +50,7 @@ class AppSettings: ObservableObject {
         }
         
         totalUsageCount = UserDefaults.standard.integer(forKey: usageCountKey)
+        showFloatingWindow = UserDefaults.standard.bool(forKey: showFloatingWindowKey)
     }
     
     func saveSettings() {
@@ -56,6 +59,7 @@ class AppSettings: ObservableObject {
         }
         UserDefaults.standard.set(theme.rawValue, forKey: themeKey)
         UserDefaults.standard.set(totalUsageCount, forKey: usageCountKey)
+        UserDefaults.standard.set(showFloatingWindow, forKey: showFloatingWindowKey)
     }
     
     func incrementUsageCount() {

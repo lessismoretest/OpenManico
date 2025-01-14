@@ -10,9 +10,9 @@ struct SettingsView: View {
         Form {
             Section {
                 Picker("外观", selection: $settings.theme) {
+                    Text("跟随系统").tag(AppTheme.system)
                     Text("浅色").tag(AppTheme.light)
                     Text("深色").tag(AppTheme.dark)
-                    Text("跟随系统").tag(AppTheme.system)
                 }
                 .pickerStyle(.menu)
             } header: {
