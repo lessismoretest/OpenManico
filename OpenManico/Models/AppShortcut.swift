@@ -25,6 +25,7 @@ class AppSettings: ObservableObject {
     @Published var totalUsageCount: Int = 0
     @Published var showFloatingWindow: Bool = true
     @Published var showWebShortcutsInFloatingWindow: Bool = false
+    @Published var selectedShortcutIndex: Int = -1
     
     static let shared = AppSettings()
     
@@ -119,5 +120,28 @@ class AppSettings: ObservableObject {
         
         try? jsonData.write(to: exportURL)
         return exportURL
+    }
+    
+    func resetSelection() {
+        selectedShortcutIndex = -1
+    }
+    
+    func selectNextShortcut() {
+        let sortedShortcuts = shortcuts.sorted(by: { $0.key < $1.key })
+        if sortedShortcuts.isEmpty { return }
+        
+        if selectedShortcutIndex == -1 {
+            selectedShortcutIndex = 0
+        } else {
+            selectedShortcutIndex = (selectedShortcutIndex + 1) % sortedShortcuts.count
+        }
+    }
+    
+    var selectedShortcut: AppShortcut? {
+        let sortedShortcuts = shortcuts.sorted(by: { $0.key < $1.key })
+        guard selectedShortcutIndex >= 0 && selectedShortcutIndex < sortedShortcuts.count else {
+            return nil
+        }
+        return sortedShortcuts[selectedShortcutIndex]
     }
 } 

@@ -39,10 +39,12 @@ class HotKeyManager: ObservableObject {
     // Option 键长按计时器
     private var optionKeyTimer: Timer?
     private var isOptionKeyPressed = false
+    private var isTabMonitoringEnabled = false
     
     init() {
         setupEventHandler()
         setupOptionKeyMonitor()
+        setupTabKeyMonitor()
     }
     
     deinit {
@@ -250,6 +252,20 @@ class HotKeyManager: ObservableObject {
     }
     
     /**
+     * 设置 Tab 键监听
+     */
+    private func setupTabKeyMonitor() {
+        NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            guard let self = self,
+                  self.isOptionKeyPressed,
+                  event.keyCode == 0x30 // Tab 键的键码
+            else { return }
+            
+            AppSettings.shared.selectNextShortcut()
+        }
+    }
+    
+    /**
      * 设置 Option 键监听
      */
     private func setupOptionKeyMonitor() {
@@ -266,6 +282,7 @@ class HotKeyManager: ObservableObject {
                     DispatchQueue.main.async {
                         if AppSettings.shared.showFloatingWindow {
                             DockIconsWindowController.shared.showWindow()
+                            AppSettings.shared.resetSelection() // 重置选中状态
                         }
                     }
                 }
@@ -276,6 +293,11 @@ class HotKeyManager: ObservableObject {
                 self.optionKeyTimer = nil
                 DispatchQueue.main.async {
                     DockIconsWindowController.shared.hideWindow()
+                    // 如果有选中的应用，则打开它
+                    if let shortcut = AppSettings.shared.selectedShortcut {
+                        self.switchToApp(bundleIdentifier: shortcut.bundleIdentifier)
+                    }
+                    AppSettings.shared.resetSelection() // 重置选中状态
                 }
             }
         }

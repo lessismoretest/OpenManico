@@ -12,7 +12,7 @@ struct DockIconsView: View {
         VStack(spacing: 16) {
             // 应用程序图标
             HStack(spacing: 12) {
-                ForEach(settings.shortcuts.sorted(by: { $0.key < $1.key })) { shortcut in
+                ForEach(Array(settings.shortcuts.sorted(by: { $0.key < $1.key }).enumerated()), id: \.element.id) { index, shortcut in
                     if let app = NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first,
                        let icon = app.icon {
                         VStack(spacing: 4) {
@@ -20,6 +20,10 @@ struct DockIconsView: View {
                                 .resizable()
                                 .frame(width: 48, height: 48)
                                 .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.white, lineWidth: settings.selectedShortcutIndex == index ? 2 : 0)
+                                )
                             
                             Text(shortcut.key)
                                 .font(.system(size: 12, weight: .medium))
