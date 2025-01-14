@@ -1,6 +1,25 @@
 # OpenManico
 
-OpenManico 是一个轻量级的 macOS 应用程序，通过 Option + 数字/字母键快速切换应用程序，提高工作效率。
+<div align="center">
+  <img src="OpenManico/Assets.xcassets/AppIcon.appiconset/mac128.png" width="128" height="128" alt="OpenManico Icon">
+  <p><strong>MacOS App 快捷启动工具</strong></p>
+</div>
+
+OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过 Option + 数字/字母键快速切换应用程序，提高工作效率。
+
+**重要：致敬 Manico（https://manico.im/），有能力的还是支持下原作者！**
+
+如有侵权，请联系我下架！纯免费应用，无任何收费项目！
+
+## 应用截图
+
+<div align="center">
+  <img src="Screenshots/home.png" width="800" alt="快捷键设置界面">  
+  <img src="Screenshots/searchapp.png" width="800" alt="通用设置界面">
+  <p><em>快捷键设置界面</em></p>
+  <img src="Screenshots/setting.png" width="800" alt="通用设置界面">
+  <p><em>通用设置界面</em></p>
+</div>
 
 ## 特性
 
@@ -16,6 +35,19 @@ OpenManico 是一个轻量级的 macOS 应用程序，通过 Option + 数字/字
 1. 从 [Releases](https://github.com/lessismoretest/OpenManico/releases) 下载最新版本
 2. 将应用拖入应用程序文件夹
 3. 首次运行时授予必要的权限
+
+<details>
+<summary><strong>首次运行权限设置指南</strong></summary>
+
+1. 辅助功能权限
+   - 首次运行时会提示授予辅助功能权限
+   - 或手动前往：系统设置 > 隐私与安全性 > 辅助功能
+   - 勾选 OpenManico
+
+2. 自动化权限
+   - 首次切换应用时会提示授予权限
+   - 建议选择"始终允许"
+</details>
 
 ## 使用方法
 
