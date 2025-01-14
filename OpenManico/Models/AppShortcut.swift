@@ -78,7 +78,8 @@ class AppSettings: ObservableObject {
     }
     
     func exportSettings() -> URL? {
-        let shortcuts = self.shortcuts.map { shortcut -> [String: String] in
+        // 导出应用快捷键
+        let appShortcuts = self.shortcuts.map { shortcut -> [String: String] in
             return [
                 "key": shortcut.key,
                 "bundleIdentifier": shortcut.bundleIdentifier,
@@ -86,8 +87,20 @@ class AppSettings: ObservableObject {
             ]
         }
         
-        // 只导出快捷键数据
-        let exportData = ["shortcuts": shortcuts]
+        // 导出网站快捷键
+        let webShortcuts = HotKeyManager.shared.webShortcutManager.shortcuts.map { shortcut -> [String: String] in
+            return [
+                "key": shortcut.key,
+                "url": shortcut.url,
+                "name": shortcut.name
+            ]
+        }
+        
+        // 只导出快捷键配置
+        let exportData: [String: Any] = [
+            "appShortcuts": appShortcuts,
+            "webShortcuts": webShortcuts
+        ]
         
         guard let jsonData = try? JSONSerialization.data(withJSONObject: exportData, options: .prettyPrinted) else {
             return nil
