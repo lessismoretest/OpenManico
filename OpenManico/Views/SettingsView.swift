@@ -18,6 +18,19 @@ struct SettingsView: View {
                     Text("深色").tag(AppTheme.dark)
                 }
                 .pickerStyle(.menu)
+                .onChange(of: settings.theme) { _ in
+                    settings.saveSettings()
+                    // 立即应用主题
+                    if let appDelegate = NSApp.delegate as? AppDelegate {
+                        appDelegate.applyTheme()
+                    }
+                    // 强制刷新所有窗口
+                    for window in NSApp.windows {
+                        window.invalidateShadow()
+                        window.contentView?.needsDisplay = true
+                        window.contentView?.needsLayout = true
+                    }
+                }
             } header: {
                 Text("主题")
             }
