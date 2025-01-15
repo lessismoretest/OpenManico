@@ -219,15 +219,39 @@ class HotKeyManager: ObservableObject {
         
         // 先尝试激活已运行的应用
         if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
-            let success = app.activate(options: [.activateIgnoringOtherApps])
+            // 使用更强制的激活选项
+            let options: NSApplication.ActivationOptions = [
+                .activateIgnoringOtherApps
+            ]
             
-            // 如果第一次激活失败，尝试强制激活
+            let success = app.activate(options: options)
+            print("First attempt to activate app \(bundleIdentifier): \(success)")
+            
+            // 如果第一次激活失败，尝试多次强制激活
             if !success {
+                // 延迟一点时间再尝试
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    _ = app.activate(options: [.activateIgnoringOtherApps])
+                    // 先尝试隐藏其他应用
+                    NSApplication.shared.hide(nil)
+                    
+                    // 再次尝试激活目标应用
+                    let secondSuccess = app.activate(options: options)
+                    print("Second attempt to activate app \(bundleIdentifier): \(secondSuccess)")
+                    
+                    if !secondSuccess {
+                        // 如果还是失败，尝试最后一次
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            let finalSuccess = app.activate(options: options)
+                            print("Final attempt to activate app \(bundleIdentifier): \(finalSuccess)")
+                            
+                            // 如果还是失败，尝试重新启动应用
+                            if !finalSuccess {
+                                self.restartApp(bundleIdentifier: bundleIdentifier)
+                            }
+                        }
+                    }
                 }
             }
-            print("Activating running app \(bundleIdentifier): \(success)")
             return
         }
         
@@ -236,7 +260,7 @@ class HotKeyManager: ObservableObject {
             do {
                 let config = NSWorkspace.OpenConfiguration()
                 config.activates = true
-                config.hidesOthers = false
+                config.hidesOthers = true
                 
                 try NSWorkspace.shared.openApplication(
                     at: url,
@@ -248,6 +272,33 @@ class HotKeyManager: ObservableObject {
             }
         } else {
             print("Could not find app with bundle ID: \(bundleIdentifier)")
+        }
+    }
+    
+    private func restartApp(bundleIdentifier: String) {
+        // 尝试终止应用
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
+            let terminated = app.terminate()
+            print("Terminating app \(bundleIdentifier): \(terminated)")
+            
+            // 等待应用终止后重新启动
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
+                    do {
+                        let config = NSWorkspace.OpenConfiguration()
+                        config.activates = true
+                        config.hidesOthers = true
+                        
+                        try NSWorkspace.shared.openApplication(
+                            at: url,
+                            configuration: config
+                        )
+                        print("Restarting app at \(url)")
+                    } catch {
+                        print("Error restarting app: \(error)")
+                    }
+                }
+            }
         }
     }
     

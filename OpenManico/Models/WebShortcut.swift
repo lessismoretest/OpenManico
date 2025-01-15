@@ -18,23 +18,35 @@ struct WebShortcut: Identifiable, Codable {
     
     /// 获取网站图标
     func fetchIcon(completion: @escaping (NSImage?) -> Void) {
-        guard let url = URL(string: self.url) else {
+        guard let url = URL(string: self.url),
+              let host = url.host else {
             completion(nil)
             return
         }
         
-        // 尝试获取网站的favicon
-        let faviconURL = url.scheme! + "://" + url.host! + "/favicon.ico"
+        // 构建安全的 favicon URL
+        let faviconURL = "\(url.scheme ?? "https")://\(host)/favicon.ico"
+        guard let faviconRequestURL = URL(string: faviconURL) else {
+            completion(nil)
+            return
+        }
         
-        URLSession.shared.dataTask(with: URL(string: faviconURL)!) { data, response, error in
+        URLSession.shared.dataTask(with: faviconRequestURL) { data, response, error in
             if let data = data, let image = NSImage(data: data) {
                 DispatchQueue.main.async {
                     completion(image)
                 }
             } else {
                 // 如果直接获取favicon失败，尝试从Google获取
-                let googleFaviconURL = "https://www.google.com/s2/favicons?domain=" + url.host! + "&sz=64"
-                URLSession.shared.dataTask(with: URL(string: googleFaviconURL)!) { data, response, error in
+                let googleFaviconURL = "https://www.google.com/s2/favicons?domain=\(host)&sz=64"
+                guard let googleURL = URL(string: googleFaviconURL) else {
+                    DispatchQueue.main.async {
+                        completion(nil)
+                    }
+                    return
+                }
+                
+                URLSession.shared.dataTask(with: googleURL) { data, response, error in
                     if let data = data, let image = NSImage(data: data) {
                         DispatchQueue.main.async {
                             completion(image)

@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @StateObject private var settings = AppSettings.shared
     @State private var showingExportDialog = false
+    @State private var hasAccessibilityPermission = AXIsProcessTrusted()
     
     var body: some View {
         Form {
@@ -24,6 +25,23 @@ struct SettingsView: View {
                     .onChange(of: settings.launchAtLogin) { _ in
                         settings.toggleLaunchAtLogin()
                     }
+                
+                HStack {
+                    Text("辅助功能权限")
+                    Spacer()
+                    if hasAccessibilityPermission {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    } else {
+                        Button("前往设置") {
+                            openAccessibilityPreferences()
+                        }
+                    }
+                }
+                .onAppear {
+                    // 每次视图出现时检查权限状态
+                    hasAccessibilityPermission = AXIsProcessTrusted()
+                }
                 
                 HStack {
                     Text("导出快捷键设置")
@@ -73,6 +91,11 @@ struct SettingsView: View {
                 print("Export failed: \(error.localizedDescription)")
             }
         }
+    }
+    
+    private func openAccessibilityPreferences() {
+        let prefpaneUrl = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+        NSWorkspace.shared.open(prefpaneUrl)
     }
 }
 

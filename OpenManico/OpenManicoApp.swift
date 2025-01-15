@@ -9,37 +9,31 @@ import SwiftUI
 
 @main
 struct OpenManicoApp: App {
-    @StateObject private var settings = AppSettings.shared
-    private let hotKeyManager = HotKeyManager.shared
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .preferredColorScheme(colorScheme)
-                .onAppear {
-                    // 设置应用为代理应用
-                    NSApp.setActivationPolicy(.accessory)
-                }
-        }
-        .windowStyle(HiddenTitleBarWindowStyle())
-        .commands {
-            // 添加一个自定义菜单项来显示主窗口
-            CommandGroup(after: .appInfo) {
-                Button("显示设置") {
-                    NSApp.activate(ignoringOtherApps: true)
-                    if let window = NSApp.windows.first {
-                        window.makeKeyAndOrderFront(nil)
-                    }
-                }
-            }
         }
     }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // 设置应用在后台运行时保持活跃
+        NSApp.setActivationPolicy(.accessory)
+        
+        // 防止应用在最后一个窗口关闭时退出
+        NSApp.activate(ignoringOtherApps: true)
+    }
     
-    private var colorScheme: ColorScheme? {
-        switch settings.theme {
-        case .light: return .light
-        case .dark: return .dark
-        case .system: return nil
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // 当用户点击 Dock 图标时显示主窗口
+        if !flag {
+            for window in sender.windows {
+                window.makeKeyAndOrderFront(self)
+            }
         }
+        return true
     }
 }
