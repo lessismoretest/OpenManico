@@ -34,6 +34,7 @@ OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过
 - 🔒 安全可靠：无需网络连接，数据本地存储
 - 💾 配置导出：支持导出快捷键配置到 JSON 文件
 - 📥 配置导入：支持从 JSON 文件导入快捷键配置，方便迁移和备份
+   - OpenManico_Shortcuts.json是我的快捷配置供参考
 
 ## 安装
 
