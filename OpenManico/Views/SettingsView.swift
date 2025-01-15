@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @StateObject private var settings = AppSettings.shared
     @State private var showingExportDialog = false
+    @State private var showingImportDialog = false
     @State private var hasAccessibilityPermission = AXIsProcessTrusted()
     
     var body: some View {
@@ -44,14 +45,23 @@ struct SettingsView: View {
                 }
                 
                 HStack {
-                    Text("导出快捷键设置")
+                    Text("快捷键设置")
                     Spacer()
+                    Button(action: {
+                        showingImportDialog = true
+                    }) {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("导入快捷键设置")
+                    
                     Button(action: {
                         showingExportDialog = true
                     }) {
                         Image(systemName: "square.and.arrow.up")
                     }
                     .buttonStyle(.borderless)
+                    .help("导出快捷键设置")
                 }
             } header: {
                 Text("通用")
@@ -89,6 +99,50 @@ struct SettingsView: View {
                 print("Shortcuts exported to \(url)")
             case .failure(let error):
                 print("Export failed: \(error.localizedDescription)")
+            }
+        }
+        .fileImporter(
+            isPresented: $showingImportDialog,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    do {
+                        let data = try Data(contentsOf: url)
+                        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                        
+                        if let appShortcutsData = json?["appShortcuts"] as? [[String: String]] {
+                            settings.shortcuts = appShortcutsData.compactMap { shortcutData in
+                                guard let key = shortcutData["key"],
+                                      let bundleIdentifier = shortcutData["bundleIdentifier"],
+                                      let appName = shortcutData["appName"] else {
+                                    return nil
+                                }
+                                return AppShortcut(key: key, bundleIdentifier: bundleIdentifier, appName: appName)
+                            }
+                        }
+                        
+                        if let webShortcutsData = json?["webShortcuts"] as? [[String: String]] {
+                            HotKeyManager.shared.webShortcutManager.shortcuts = webShortcutsData.compactMap { shortcutData in
+                                guard let key = shortcutData["key"],
+                                      let url = shortcutData["url"],
+                                      let name = shortcutData["name"] else {
+                                    return nil
+                                }
+                                return WebShortcut(key: key, url: url, name: name)
+                            }
+                        }
+                        
+                        settings.saveSettings()
+                        HotKeyManager.shared.webShortcutManager.saveShortcuts()
+                    } catch {
+                        print("Import failed: \(error.localizedDescription)")
+                    }
+                }
+            case .failure(let error):
+                print("Import failed: \(error.localizedDescription)")
             }
         }
     }

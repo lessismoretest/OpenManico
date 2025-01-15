@@ -85,7 +85,7 @@ class WebShortcutManager: ObservableObject {
     }
     
     /// 保存快捷键配置
-    private func saveShortcuts() {
+    func saveShortcuts() {
         if let data = try? JSONEncoder().encode(shortcuts) {
             UserDefaults.standard.set(data, forKey: shortcutsKey)
         }
