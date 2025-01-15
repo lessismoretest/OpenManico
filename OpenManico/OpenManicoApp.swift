@@ -19,7 +19,12 @@ struct OpenManicoApp: App {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var hotKeyManager: HotKeyManager?
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 初始化热键管理器
+        hotKeyManager = HotKeyManager.shared
+        
         // 设置应用在后台运行时保持活跃
         NSApp.setActivationPolicy(.accessory)
         

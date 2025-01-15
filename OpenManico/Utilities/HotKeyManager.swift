@@ -12,6 +12,10 @@ class HotKeyManager: ObservableObject {
     private var lastActiveApp: NSRunningApplication?
     @Published var webShortcutManager = WebShortcutManager()
     
+    // 修饰键常量
+    private let optionKeyMask: UInt32 = 0x0800
+    private let cmdKeyMask: UInt32 = 0x0100
+    
     // 数字键的键码映射
     private let numberKeyCodes: [Int: Int] = [
         1: 0x12, // 1
@@ -42,12 +46,15 @@ class HotKeyManager: ObservableObject {
     private var isCommandKeyPressed = false
     
     init() {
+        print("HotKeyManager initializing...")
         setupEventHandler()
         setupOptionKeyMonitor()
         setupTabKeyMonitor()
+        print("HotKeyManager initialization completed")
     }
     
     deinit {
+        print("HotKeyManager deinitializing...")
         unregisterAllHotKeys()
         if let handler = eventHandler {
             RemoveEventHandler(handler)
@@ -59,6 +66,7 @@ class HotKeyManager: ObservableObject {
      * 设置事件处理器
      */
     private func setupEventHandler() {
+        print("Setting up event handler...")
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
             eventKind: OSType(kEventHotKeyPressed)
@@ -68,7 +76,11 @@ class HotKeyManager: ObservableObject {
         let status = InstallEventHandler(
             GetEventMonitorTarget(),
             { (_, event, _) -> OSStatus in
-                guard let event = event else { return OSStatus(eventNotHandledErr) }
+                print("Hot key event received")
+                guard let event = event else { 
+                    print("Event is nil")
+                    return OSStatus(eventNotHandledErr) 
+                }
                 
                 var hotkeyID = EventHotKeyID()
                 let err = GetEventParameter(
@@ -82,7 +94,10 @@ class HotKeyManager: ObservableObject {
                 )
                 
                 if err == noErr {
+                    print("Hot key ID received: \(hotkeyID.id)")
                     HotKeyManager.shared.handleHotKey(hotkeyID.id)
+                } else {
+                    print("Failed to get hot key ID: \(err)")
                 }
                 
                 return OSStatus(noErr)
@@ -103,18 +118,22 @@ class HotKeyManager: ObservableObject {
     }
     
     private func registerAllHotKeys() {
+        print("Registering all hot keys...")
         unregisterAllHotKeys()
         hotKeyRefs.removeAll()
         
         // 注册数字键快捷键
         for i in 1...9 {
+            print("Registering number key \(i)")
             registerHotKey(id: i, keyCode: numberKeyCodes[i]!)
         }
         
         // 注册字母键快捷键
         for (letter, keyCode) in letterKeyCodes {
+            print("Registering letter key \(letter)")
             registerHotKey(id: 10 + Int(UnicodeScalar(letter)!.value), keyCode: keyCode)
         }
+        print("All hot keys registered")
     }
     
     private func registerHotKey(id: Int, keyCode: Int) {
@@ -125,7 +144,7 @@ class HotKeyManager: ObservableObject {
         var hotKeyRef: EventHotKeyRef?
         
         // 注册 Option 快捷键
-        let optionModifier: UInt32 = UInt32(optionKey)
+        let optionModifier: UInt32 = optionKeyMask
         let status1 = RegisterEventHotKey(
             UInt32(keyCode),
             optionModifier,
@@ -138,10 +157,12 @@ class HotKeyManager: ObservableObject {
         if status1 == noErr {
             hotKeyRefs.append(hotKeyRef)
             print("Successfully registered Option hotkey for ID \(id)")
+        } else {
+            print("Failed to register Option hotkey for ID \(id): \(status1)")
         }
         
         // 注册 Option + Command 快捷键
-        let optionCommandModifier: UInt32 = UInt32(optionKey | cmdKey)
+        let optionCommandModifier: UInt32 = optionKeyMask | cmdKeyMask
         var webHotKeyRef: EventHotKeyRef?
         let status2 = RegisterEventHotKey(
             UInt32(keyCode),
@@ -155,6 +176,8 @@ class HotKeyManager: ObservableObject {
         if status2 == noErr {
             hotKeyRefs.append(webHotKeyRef)
             print("Successfully registered Option+Command hotkey for ID \(id)")
+        } else {
+            print("Failed to register Option+Command hotkey for ID \(id): \(status2)")
         }
     }
     
@@ -217,87 +240,53 @@ class HotKeyManager: ObservableObject {
         // 增加使用次数
         AppSettings.shared.incrementUsageCount()
         
-        // 先尝试激活已运行的应用
-        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
-            // 使用更强制的激活选项
-            let options: NSApplication.ActivationOptions = [
-                .activateIgnoringOtherApps
-            ]
-            
-            let success = app.activate(options: options)
-            print("First attempt to activate app \(bundleIdentifier): \(success)")
-            
-            // 如果第一次激活失败，尝试多次强制激活
-            if !success {
-                // 延迟一点时间再尝试
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // 先尝试隐藏其他应用
-                    NSApplication.shared.hide(nil)
+        // 使用 AppleScript 来切换应用
+        let script = """
+        tell application "System Events"
+            set appPath to path to application id "\(bundleIdentifier)"
+            tell application (appPath as text)
+                activate
+            end tell
+        end tell
+        """
+        
+        var error: NSDictionary?
+        if let scriptObject = NSAppleScript(source: script) {
+            let output = scriptObject.executeAndReturnError(&error)
+            if let error = error {
+                print("Failed to switch app: \(error)")
+                
+                // 如果 AppleScript 失败，尝试使用传统方法
+                if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
+                    let options: NSApplication.ActivationOptions = [
+                        .activateIgnoringOtherApps,
+                        .activateAllWindows
+                    ]
                     
-                    // 再次尝试激活目标应用
-                    let secondSuccess = app.activate(options: options)
-                    print("Second attempt to activate app \(bundleIdentifier): \(secondSuccess)")
+                    let success = app.activate(options: options)
+                    print("Fallback attempt to activate app \(bundleIdentifier): \(success)")
                     
-                    if !secondSuccess {
-                        // 如果还是失败，尝试最后一次
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            let finalSuccess = app.activate(options: options)
-                            print("Final attempt to activate app \(bundleIdentifier): \(finalSuccess)")
-                            
-                            // 如果还是失败，尝试重新启动应用
-                            if !finalSuccess {
-                                self.restartApp(bundleIdentifier: bundleIdentifier)
+                    if !success {
+                        // 如果还是失败，尝试启动应用
+                        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
+                            do {
+                                let config = NSWorkspace.OpenConfiguration()
+                                config.activates = true
+                                config.hidesOthers = true
+                                
+                                try NSWorkspace.shared.openApplication(
+                                    at: url,
+                                    configuration: config
+                                )
+                                print("Launching app at \(url)")
+                            } catch {
+                                print("Error launching app: \(error)")
                             }
                         }
                     }
                 }
-            }
-            return
-        }
-        
-        // 如果应用未运行，则启动它
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
-            do {
-                let config = NSWorkspace.OpenConfiguration()
-                config.activates = true
-                config.hidesOthers = true
-                
-                try NSWorkspace.shared.openApplication(
-                    at: url,
-                    configuration: config
-                )
-                print("Launching app at \(url)")
-            } catch {
-                print("Error launching app: \(error)")
-            }
-        } else {
-            print("Could not find app with bundle ID: \(bundleIdentifier)")
-        }
-    }
-    
-    private func restartApp(bundleIdentifier: String) {
-        // 尝试终止应用
-        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
-            let terminated = app.terminate()
-            print("Terminating app \(bundleIdentifier): \(terminated)")
-            
-            // 等待应用终止后重新启动
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
-                    do {
-                        let config = NSWorkspace.OpenConfiguration()
-                        config.activates = true
-                        config.hidesOthers = true
-                        
-                        try NSWorkspace.shared.openApplication(
-                            at: url,
-                            configuration: config
-                        )
-                        print("Restarting app at \(url)")
-                    } catch {
-                        print("Error restarting app: \(error)")
-                    }
-                }
+            } else {
+                print("Successfully switched to app using AppleScript")
             }
         }
     }

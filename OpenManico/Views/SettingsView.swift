@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var showingExportDialog = false
     @State private var showingImportDialog = false
     @State private var hasAccessibilityPermission = AXIsProcessTrusted()
+    @State private var hasAutomationPermission = false
     
     var body: some View {
         Form {
@@ -42,6 +43,22 @@ struct SettingsView: View {
                 .onAppear {
                     // 每次视图出现时检查权限状态
                     hasAccessibilityPermission = AXIsProcessTrusted()
+                }
+                
+                HStack {
+                    Text("自动化权限")
+                    Spacer()
+                    if hasAutomationPermission {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    } else {
+                        Button("前往设置") {
+                            openAutomationPreferences()
+                        }
+                    }
+                }
+                .onAppear {
+                    checkAutomationPermission()
                 }
                 
                 HStack {
@@ -150,6 +167,26 @@ struct SettingsView: View {
     private func openAccessibilityPreferences() {
         let prefpaneUrl = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
         NSWorkspace.shared.open(prefpaneUrl)
+    }
+    
+    private func openAutomationPreferences() {
+        let prefpaneUrl = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!
+        NSWorkspace.shared.open(prefpaneUrl)
+    }
+    
+    private func checkAutomationPermission() {
+        // 检查是否有自动化权限
+        let appleScriptCommand = """
+        tell application "System Events"
+            return true
+        end tell
+        """
+        
+        var error: NSDictionary?
+        if let scriptObject = NSAppleScript(source: appleScriptCommand) {
+            let output = scriptObject.executeAndReturnError(&error)
+            hasAutomationPermission = error == nil && output.booleanValue
+        }
     }
 }
 
