@@ -288,6 +288,21 @@ class AppSettings: ObservableObject {
         }
     }
     
+    func duplicateScene(_ scene: Scene) {
+        // 深拷贝场景的快捷键
+        if let data = try? JSONEncoder().encode(scene.shortcuts),
+           let copiedShortcuts = try? JSONDecoder().decode([AppShortcut].self, from: data) {
+            
+            // 创建新的场景对象，使用原场景名称加上"副本"
+            let newScene = Scene(name: scene.name + " 副本", shortcuts: copiedShortcuts)
+            scenes.append(newScene)
+            
+            // 切换到新场景
+            switchScene(to: newScene)
+            saveSettings()
+        }
+    }
+    
     func switchScene(to scene: Scene) {
         isUpdatingScene = true
         

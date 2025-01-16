@@ -39,6 +39,16 @@ struct WebShortcutsView: View {
                 .disabled(webShortcutManager.currentScene == nil)
                 
                 Button(action: {
+                    if let currentScene = webShortcutManager.currentScene {
+                        webShortcutManager.duplicateScene(currentScene)
+                    }
+                }) {
+                    Image(systemName: "doc.on.doc")
+                }
+                .help("复制当前场景")
+                .disabled(webShortcutManager.currentScene == nil)
+                
+                Button(action: {
                     showingAddScene = true
                 }) {
                     Image(systemName: "plus.circle")

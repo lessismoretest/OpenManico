@@ -39,6 +39,16 @@ struct ShortcutsView: View {
                 .disabled(settings.currentScene == nil)
                 
                 Button(action: {
+                    if let currentScene = settings.currentScene {
+                        settings.duplicateScene(currentScene)
+                    }
+                }) {
+                    Image(systemName: "doc.on.doc")
+                }
+                .help("复制当前场景")
+                .disabled(settings.currentScene == nil)
+                
+                Button(action: {
                     showingAddScene = true
                 }) {
                     Image(systemName: "plus.circle")
