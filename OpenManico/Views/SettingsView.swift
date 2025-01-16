@@ -4,9 +4,11 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @StateObject private var settings = AppSettings.shared
-    @State private var showingExportDialog = false
     @State private var showingImportDialog = false
+    @State private var showingImportSheet = false
+    @State private var importData: ExportData?
     @State private var hasAccessibilityPermission = AXIsProcessTrusted()
+    @State private var showingExportSheet = false
     
     var body: some View {
         Form {
@@ -63,7 +65,7 @@ struct SettingsView: View {
                     .help("导入快捷键设置")
                     
                     Button(action: {
-                        showingExportDialog = true
+                        showingExportSheet = true
                     }) {
                         Image(systemName: "square.and.arrow.up")
                     }
@@ -95,17 +97,12 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .fileExporter(
-            isPresented: $showingExportDialog,
-            document: SettingsDocument(settings: settings),
-            contentType: .json,
-            defaultFilename: "OpenManico_Shortcuts"
-        ) { result in
-            switch result {
-            case .success(let url):
-                print("Successfully exported settings to \(url)")
-            case .failure(let error):
-                print("Failed to export settings: \(error)")
+        .sheet(isPresented: $showingExportSheet) {
+            ExportSettingsView()
+        }
+        .sheet(isPresented: $showingImportSheet) {
+            if let data = importData {
+                ImportSettingsView(importData: data)
             }
         }
         .fileImporter(
@@ -117,35 +114,11 @@ struct SettingsView: View {
             case .success(let urls):
                 guard let url = urls.first else { return }
                 
-                // 读取并导入配置
+                // 读取并解析导入数据
                 if let data = try? Data(contentsOf: url),
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    
-                    // 导入应用快捷键
-                    if let appShortcuts = json["appShortcuts"] as? [[String: String]] {
-                        let shortcuts = appShortcuts.compactMap { dict -> AppShortcut? in
-                            guard let key = dict["key"],
-                                  let bundleId = dict["bundleIdentifier"],
-                                  let name = dict["appName"] else { return nil }
-                            return AppShortcut(key: key,
-                                            bundleIdentifier: bundleId,
-                                            appName: name)
-                        }
-                        settings.shortcuts = shortcuts
-                    }
-                    
-                    // 导入网站快捷键
-                    if let webShortcuts = json["webShortcuts"] as? [[String: String]] {
-                        let shortcuts = webShortcuts.compactMap { dict -> WebShortcut? in
-                            guard let key = dict["key"],
-                                  let url = dict["url"],
-                                  let name = dict["name"] else { return nil }
-                            return WebShortcut(key: key, url: url, name: name)
-                        }
-                        HotKeyManager.shared.webShortcutManager.shortcuts = shortcuts
-                    }
-                    
-                    print("Successfully imported settings")
+                   let importedData = ExportManager.shared.importScenes(from: data) {
+                    self.importData = importedData
+                    self.showingImportSheet = true
                 } else {
                     print("Failed to parse import file")
                 }
@@ -168,29 +141,6 @@ struct GitHubIcon: View {
             .resizable()
             .aspectRatio(contentMode: .fit)
             .frame(width: 16, height: 16)
-    }
-}
-
-// 文件导出相关代码保持不变
-struct SettingsDocument: FileDocument {
-    let settings: AppSettings
-    
-    static var readableContentTypes: [UTType] { [.json] }
-    
-    init(settings: AppSettings) {
-        self.settings = settings
-    }
-    
-    init(configuration: ReadConfiguration) throws {
-        settings = AppSettings.shared
-    }
-    
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        guard let exportURL = settings.exportSettings(),
-              let data = try? Data(contentsOf: exportURL) else {
-            throw CocoaError(.fileWriteUnknown)
-        }
-        return FileWrapper(regularFileWithContents: data)
     }
 }
 
