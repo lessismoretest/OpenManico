@@ -262,11 +262,30 @@ class AppSettings: ObservableObject {
     
     func removeScene(_ scene: Scene) {
         scenes.removeAll { $0.id == scene.id }
-        if currentScene?.id == scene.id {
-            currentScene = scenes.first
-            shortcuts = currentScene?.shortcuts ?? []
+        if scenes.isEmpty {
+            // 如果删除了所有场景，创建一个默认场景
+            addScene(name: "默认")
+        }
+        // 切换到第一个场景
+        if let firstScene = scenes.first {
+            switchScene(to: firstScene)
         }
         saveSettings()
+    }
+    
+    func renameScene(_ scene: Scene, to newName: String) {
+        if let index = scenes.firstIndex(where: { $0.id == scene.id }) {
+            var updatedScene = scene
+            updatedScene.name = newName
+            scenes[index] = updatedScene
+            
+            // 如果重命名的是当前场景，更新当前场景
+            if currentScene?.id == scene.id {
+                currentScene = updatedScene
+            }
+            
+            saveSettings()
+        }
     }
     
     func switchScene(to scene: Scene) {

@@ -80,11 +80,15 @@ struct WebScene: Codable, Identifiable, Hashable {
     var shortcuts: [WebShortcut]
     
     static func == (lhs: WebScene, rhs: WebScene) -> Bool {
-        return lhs.id == rhs.id
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.shortcuts == rhs.shortcuts
     }
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+        hasher.combine(name)
+        hasher.combine(shortcuts)
     }
 }
 
@@ -188,11 +192,30 @@ class WebShortcutManager: ObservableObject {
     
     func removeScene(_ scene: WebScene) {
         scenes.removeAll { $0.id == scene.id }
-        if currentScene?.id == scene.id {
-            currentScene = scenes.first
-            shortcuts = currentScene?.shortcuts ?? []
+        if scenes.isEmpty {
+            // 如果删除了所有场景，创建一个默认场景
+            addScene(name: "默认")
+        }
+        // 切换到第一个场景
+        if let firstScene = scenes.first {
+            switchScene(to: firstScene)
         }
         saveShortcuts()
+    }
+    
+    func renameScene(_ scene: WebScene, to newName: String) {
+        if let index = scenes.firstIndex(where: { $0.id == scene.id }) {
+            var updatedScene = scene
+            updatedScene.name = newName
+            scenes[index] = updatedScene
+            
+            // 如果重命名的是当前场景，更新当前场景
+            if currentScene?.id == scene.id {
+                currentScene = updatedScene
+            }
+            
+            saveShortcuts()
+        }
     }
     
     func switchScene(to scene: WebScene) {
@@ -209,8 +232,16 @@ class WebShortcutManager: ObservableObject {
             // 更新当前场景引用
             currentScene = newScene
             
+            // 更新scenes数组中的对应场景
+            if let index = scenes.firstIndex(where: { $0.id == scene.id }) {
+                scenes[index] = newScene
+            }
+            
             // 更新快捷键列表
             shortcuts = copiedShortcuts
+            
+            // 保存设置
+            saveShortcuts()
             
             print("Switched to web scene: \(scene.name) with \(copiedShortcuts.count) shortcuts")
         }

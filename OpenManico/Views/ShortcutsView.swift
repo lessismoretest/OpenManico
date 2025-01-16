@@ -6,7 +6,9 @@ struct ShortcutsView: View {
     @State private var showingImportDialog = false
     @State private var showingExportDialog = false
     @State private var showingAddScene = false
+    @State private var showingRenameScene = false
     @State private var newSceneName = ""
+    @State private var sceneToRename: Scene?
     
     private let availableKeys = (1...9).map(String.init) + (65...90).map { String(UnicodeScalar($0)) }
     
@@ -23,6 +25,18 @@ struct ShortcutsView: View {
                     }
                 }
                 .frame(width: 200)
+                
+                Button(action: {
+                    if let currentScene = settings.currentScene {
+                        sceneToRename = currentScene
+                        newSceneName = currentScene.name
+                        showingRenameScene = true
+                    }
+                }) {
+                    Image(systemName: "pencil.circle")
+                }
+                .help("重命名当前场景")
+                .disabled(settings.currentScene == nil)
                 
                 Button(action: {
                     showingAddScene = true
@@ -72,6 +86,36 @@ struct ShortcutsView: View {
                             settings.addScene(name: newSceneName)
                             showingAddScene = false
                             newSceneName = ""
+                        }
+                    }
+                    .disabled(newSceneName.isEmpty)
+                }
+            }
+            .padding()
+            .frame(width: 300, height: 150)
+        }
+        .sheet(isPresented: $showingRenameScene) {
+            VStack(spacing: 20) {
+                Text("重命名场景")
+                    .font(.headline)
+                
+                TextField("场景名称", text: $newSceneName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(width: 200)
+                
+                HStack {
+                    Button("取消") {
+                        showingRenameScene = false
+                        newSceneName = ""
+                        sceneToRename = nil
+                    }
+                    
+                    Button("确定") {
+                        if !newSceneName.isEmpty, let scene = sceneToRename {
+                            settings.renameScene(scene, to: newSceneName)
+                            showingRenameScene = false
+                            newSceneName = ""
+                            sceneToRename = nil
                         }
                     }
                     .disabled(newSceneName.isEmpty)

@@ -4,10 +4,11 @@ import SwiftUI
  * 网站快捷键设置视图
  */
 struct WebShortcutsView: View {
-    @StateObject private var hotKeyManager = HotKeyManager.shared
+    @StateObject private var webShortcutManager = HotKeyManager.shared.webShortcutManager
     @State private var showingAddScene = false
+    @State private var showingRenameScene = false
     @State private var newSceneName = ""
-    @State private var selectedSceneId: UUID?
+    @State private var sceneToRename: WebScene?
     
     private let availableKeys = (1...9).map(String.init) + (65...90).map { String(UnicodeScalar($0)) }
     
@@ -16,22 +17,26 @@ struct WebShortcutsView: View {
             // 场景选择器
             HStack {
                 Picker("场景", selection: Binding(
-                    get: { selectedSceneId ?? hotKeyManager.webShortcutManager.currentScene?.id ?? UUID() },
-                    set: { newId in
-                        selectedSceneId = newId
-                        if let scene = hotKeyManager.webShortcutManager.scenes.first(where: { $0.id == newId }) {
-                            hotKeyManager.webShortcutManager.switchScene(to: scene)
-                        }
-                    }
+                    get: { webShortcutManager.currentScene ?? webShortcutManager.scenes.first ?? WebScene(name: "", shortcuts: []) },
+                    set: { webShortcutManager.switchScene(to: $0) }
                 )) {
-                    ForEach(hotKeyManager.webShortcutManager.scenes) { scene in
-                        Text(scene.name).tag(scene.id)
+                    ForEach(webShortcutManager.scenes) { scene in
+                        Text(scene.name).tag(scene)
                     }
                 }
                 .frame(width: 200)
-                .onChange(of: hotKeyManager.webShortcutManager.currentScene?.id) { newId in
-                    selectedSceneId = newId
+                
+                Button(action: {
+                    if let currentScene = webShortcutManager.currentScene {
+                        sceneToRename = currentScene
+                        newSceneName = currentScene.name
+                        showingRenameScene = true
+                    }
+                }) {
+                    Image(systemName: "pencil.circle")
                 }
+                .help("重命名当前场景")
+                .disabled(webShortcutManager.currentScene == nil)
                 
                 Button(action: {
                     showingAddScene = true
@@ -40,10 +45,10 @@ struct WebShortcutsView: View {
                 }
                 .help("添加新场景")
                 
-                if hotKeyManager.webShortcutManager.scenes.count > 1 {
+                if webShortcutManager.scenes.count > 1 {
                     Button(action: {
-                        if let currentScene = hotKeyManager.webShortcutManager.currentScene {
-                            hotKeyManager.webShortcutManager.removeScene(currentScene)
+                        if let currentScene = webShortcutManager.currentScene {
+                            webShortcutManager.removeScene(currentScene)
                         }
                     }) {
                         Image(systemName: "minus.circle")
@@ -55,7 +60,7 @@ struct WebShortcutsView: View {
             
             List {
                 ForEach(availableKeys, id: \.self) { key in
-                    WebShortcutRow(key: key, webShortcutManager: hotKeyManager.webShortcutManager)
+                    WebShortcutRow(key: key, webShortcutManager: webShortcutManager)
                 }
             }
             .listStyle(InsetListStyle())
@@ -78,7 +83,7 @@ struct WebShortcutsView: View {
                     
                     Button("添加") {
                         if !newSceneName.isEmpty {
-                            hotKeyManager.webShortcutManager.addScene(name: newSceneName)
+                            webShortcutManager.addScene(name: newSceneName)
                             showingAddScene = false
                             newSceneName = ""
                         }
@@ -89,9 +94,39 @@ struct WebShortcutsView: View {
             .padding()
             .frame(width: 300, height: 150)
         }
+        .sheet(isPresented: $showingRenameScene) {
+            VStack(spacing: 20) {
+                Text("重命名场景")
+                    .font(.headline)
+                
+                TextField("场景名称", text: $newSceneName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(width: 200)
+                
+                HStack {
+                    Button("取消") {
+                        showingRenameScene = false
+                        newSceneName = ""
+                        sceneToRename = nil
+                    }
+                    
+                    Button("确定") {
+                        if !newSceneName.isEmpty, let scene = sceneToRename {
+                            webShortcutManager.renameScene(scene, to: newSceneName)
+                            showingRenameScene = false
+                            newSceneName = ""
+                            sceneToRename = nil
+                        }
+                    }
+                    .disabled(newSceneName.isEmpty)
+                }
+            }
+            .padding()
+            .frame(width: 300, height: 150)
+        }
         // 监听快捷键变化
-        .onChange(of: hotKeyManager.webShortcutManager.shortcuts) { _ in
-            hotKeyManager.webShortcutManager.updateCurrentSceneShortcuts()
+        .onChange(of: webShortcutManager.shortcuts) { _ in
+            webShortcutManager.updateCurrentSceneShortcuts()
         }
     }
 }
