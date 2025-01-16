@@ -218,6 +218,7 @@ class HotKeyManager: ObservableObject {
                 if let shortcut = self.webShortcutManager.shortcuts.first(where: { $0.key == key && $0.isEnabled }),
                    let url = URL(string: shortcut.url) {
                     NSWorkspace.shared.open(url)
+                    AppSettings.shared.incrementUsageCount()
                 }
             } else {
                 // 处理应用程序快捷键 (Option)
@@ -229,10 +230,12 @@ class HotKeyManager: ObservableObject {
                         if let lastApp = self.lastActiveApp {
                             print("Switching back to previous app: \(lastApp.localizedName ?? "")")
                             self.switchToApp(bundleIdentifier: lastApp.bundleIdentifier ?? "")
+                            AppSettings.shared.incrementUsageCount()
                         }
                     } else {
                         self.lastActiveApp = NSWorkspace.shared.frontmostApplication
                         self.switchToApp(bundleIdentifier: shortcut.bundleIdentifier)
+                        AppSettings.shared.incrementUsageCount()
                     }
                 } else {
                     print("No shortcut found for key \(key)")
