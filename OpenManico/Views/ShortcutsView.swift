@@ -2,11 +2,48 @@ import SwiftUI
 
 struct ShortcutsView: View {
     @StateObject private var settings = AppSettings.shared
+    @State private var showingAddShortcut = false
+    @State private var showingImportDialog = false
+    @State private var showingExportDialog = false
+    @State private var showingAddScene = false
+    @State private var newSceneName = ""
     
     private let availableKeys = (1...9).map(String.init) + (65...90).map { String(UnicodeScalar($0)) }
     
     var body: some View {
-        VStack {
+        VStack(spacing: 16) {
+            // 场景选择器
+            HStack {
+                Picker("场景", selection: Binding(
+                    get: { settings.currentScene ?? settings.scenes.first ?? Scene(name: "", shortcuts: []) },
+                    set: { settings.switchScene(to: $0) }
+                )) {
+                    ForEach(settings.scenes) { scene in
+                        Text(scene.name).tag(scene)
+                    }
+                }
+                .frame(width: 200)
+                
+                Button(action: {
+                    showingAddScene = true
+                }) {
+                    Image(systemName: "plus.circle")
+                }
+                .help("添加新场景")
+                
+                if settings.scenes.count > 1 {
+                    Button(action: {
+                        if let currentScene = settings.currentScene {
+                            settings.removeScene(currentScene)
+                        }
+                    }) {
+                        Image(systemName: "minus.circle")
+                    }
+                    .help("删除当前场景")
+                }
+            }
+            .padding(.horizontal)
+            
             List {
                 ForEach(availableKeys, id: \.self) { key in
                     ShortcutRow(key: key)
@@ -15,6 +52,38 @@ struct ShortcutsView: View {
             .listStyle(InsetListStyle())
         }
         .padding()
+        .sheet(isPresented: $showingAddScene) {
+            VStack(spacing: 20) {
+                Text("添加新场景")
+                    .font(.headline)
+                
+                TextField("场景名称", text: $newSceneName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(width: 200)
+                
+                HStack {
+                    Button("取消") {
+                        showingAddScene = false
+                        newSceneName = ""
+                    }
+                    
+                    Button("添加") {
+                        if !newSceneName.isEmpty {
+                            settings.addScene(name: newSceneName)
+                            showingAddScene = false
+                            newSceneName = ""
+                        }
+                    }
+                    .disabled(newSceneName.isEmpty)
+                }
+            }
+            .padding()
+            .frame(width: 300, height: 150)
+        }
+        // 监听快捷键变化
+        .onChange(of: settings.shortcuts) { _ in
+            settings.updateCurrentSceneShortcuts()
+        }
     }
 }
 

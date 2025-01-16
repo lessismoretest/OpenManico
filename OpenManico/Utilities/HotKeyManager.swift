@@ -11,6 +11,8 @@ class HotKeyManager: ObservableObject {
     private var hotKeyRefs: [EventHotKeyRef?] = []
     private var lastActiveApp: NSRunningApplication?
     @Published var webShortcutManager = WebShortcutManager()
+    private var shortcuts: [AppShortcut] = []
+    private var hotKeys: [String: Any] = [:]
     
     // 修饰键常量
     private let optionKeyMask: UInt32 = 0x0800
@@ -51,6 +53,7 @@ class HotKeyManager: ObservableObject {
         setupOptionKeyMonitor()
         setupTabKeyMonitor()
         print("HotKeyManager initialization completed")
+        updateShortcuts(AppSettings.shared.shortcuts)
     }
     
     deinit {
@@ -124,14 +127,18 @@ class HotKeyManager: ObservableObject {
         
         // 注册数字键快捷键
         for i in 1...9 {
-            print("Registering number key \(i)")
-            registerHotKey(id: i, keyCode: numberKeyCodes[i]!)
+            if let shortcut = shortcuts.first(where: { $0.key == String(i) }) {
+                print("Registering number key \(i)")
+                registerHotKey(id: i, keyCode: numberKeyCodes[i]!)
+            }
         }
         
         // 注册字母键快捷键
         for (letter, keyCode) in letterKeyCodes {
-            print("Registering letter key \(letter)")
-            registerHotKey(id: 10 + Int(UnicodeScalar(letter)!.value), keyCode: keyCode)
+            if let shortcut = shortcuts.first(where: { $0.key == letter }) {
+                print("Registering letter key \(letter)")
+                registerHotKey(id: 10 + Int(UnicodeScalar(letter)!.value), keyCode: keyCode)
+            }
         }
         print("All hot keys registered")
     }
@@ -234,59 +241,25 @@ class HotKeyManager: ObservableObject {
         }
     }
     
-    func switchToApp(bundleIdentifier: String) {
-        print("Attempting to switch to app with bundle ID: \(bundleIdentifier)")
+    private func switchToApp(bundleIdentifier: String) {
+        // 尝试使用 NSWorkspace 切换应用
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
+            let success = app.activate(options: [.activateIgnoringOtherApps])
+            if success {
+                print("Successfully switched to app using NSWorkspace")
+                return
+            }
+        }
         
-        // 增加使用次数
-        AppSettings.shared.incrementUsageCount()
-        
-        // 使用 AppleScript 来切换应用
-        let script = """
-        tell application "System Events"
-            set appPath to path to application id "\(bundleIdentifier)"
-            tell application (appPath as text)
-                activate
-            end tell
-        end tell
-        """
-        
-        var error: NSDictionary?
-        if let scriptObject = NSAppleScript(source: script) {
-            let output = scriptObject.executeAndReturnError(&error)
-            if let error = error {
-                print("Failed to switch app: \(error)")
-                
-                // 如果 AppleScript 失败，尝试使用传统方法
-                if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
-                    let options: NSApplication.ActivationOptions = [
-                        .activateIgnoringOtherApps,
-                        .activateAllWindows
-                    ]
-                    
-                    let success = app.activate(options: options)
-                    print("Fallback attempt to activate app \(bundleIdentifier): \(success)")
-                    
-                    if !success {
-                        // 如果还是失败，尝试启动应用
-                        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
-                            do {
-                                let config = NSWorkspace.OpenConfiguration()
-                                config.activates = true
-                                config.hidesOthers = true
-                                
-                                try NSWorkspace.shared.openApplication(
-                                    at: url,
-                                    configuration: config
-                                )
-                                print("Launching app at \(url)")
-                            } catch {
-                                print("Error launching app: \(error)")
-                            }
-                        }
-                    }
-                }
-            } else {
-                print("Successfully switched to app using AppleScript")
+        // 如果应用未运行，尝试启动它
+        if let appUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
+            do {
+                try NSWorkspace.shared.launchApplication(at: appUrl,
+                                                       options: [.default],
+                                                       configuration: [:])
+                print("Successfully launched app")
+            } catch {
+                print("Failed to launch app: \(error)")
             }
         }
     }
@@ -355,5 +328,18 @@ class HotKeyManager: ObservableObject {
                 }
             }
         }
+    }
+    
+    func updateShortcuts(_ newShortcuts: [AppShortcut]) {
+        print("Updating shortcuts...")
+        // 先解除所有现有的热键绑定
+        unregisterAllHotKeys()
+        
+        // 更新快捷键列表
+        self.shortcuts = newShortcuts
+        
+        // 重新注册所有热键
+        registerAllHotKeys()
+        print("Shortcuts updated")
     }
 } 

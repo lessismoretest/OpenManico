@@ -6,17 +6,20 @@
 //
 
 import SwiftUI
+import AppKit
+import ServiceManagement
 
 @main
 struct OpenManicoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var settings = AppSettings.shared
     
-    var body: some Scene {
+    var body: some SwiftUI.Scene {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(colorScheme)
         }
+        .windowStyle(HiddenTitleBarWindowStyle())
     }
     
     private var colorScheme: ColorScheme? {

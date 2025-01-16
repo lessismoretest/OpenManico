@@ -4,8 +4,6 @@
 <dict>
     <key>LSUIElement</key>
     <true/>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>需要访问权限以便切换应用程序</string>
     <key>NSSupportsAutomaticTermination</key>
     <false/>
     <key>LSBackgroundOnly</key>
@@ -16,8 +14,6 @@
     <true/>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
-    <key>NSAppleScriptEnabled</key>
-    <true/>
     <key>CFBundleShortVersionString</key>
     <string>1.0.0</string>
     <key>CFBundleVersion</key>

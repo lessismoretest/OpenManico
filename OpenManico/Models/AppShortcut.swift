@@ -1,7 +1,7 @@
 import Foundation
 import ServiceManagement
 
-struct AppShortcut: Identifiable, Codable {
+struct AppShortcut: Identifiable, Codable, Equatable, Hashable {
     let id = UUID()
     var key: String
     var bundleIdentifier: String
@@ -10,25 +10,76 @@ struct AppShortcut: Identifiable, Codable {
     var displayKey: String {
         "Option + \(key)"
     }
+    
+    static func == (lhs: AppShortcut, rhs: AppShortcut) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.key == rhs.key &&
+        lhs.bundleIdentifier == rhs.bundleIdentifier &&
+        lhs.appName == rhs.appName
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(key)
+        hasher.combine(bundleIdentifier)
+        hasher.combine(appName)
+    }
 }
 
-enum AppTheme: String, Codable {
+enum Theme: String, Codable {
     case light
     case dark
     case system
 }
 
+/// 场景模型
+struct Scene: Codable, Identifiable, Hashable {
+    var id = UUID()
+    var name: String
+    var shortcuts: [AppShortcut]
+    
+    static func == (lhs: Scene, rhs: Scene) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.shortcuts == rhs.shortcuts
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(name)
+        hasher.combine(shortcuts)
+    }
+}
+
 class AppSettings: ObservableObject {
-    @Published var shortcuts: [AppShortcut] = []
-    @Published var theme: AppTheme = .system
+    static let shared = AppSettings()
+    
+    private var isInitializing = true
+    private var isUpdatingScene = false
+    
+    @Published var shortcuts: [AppShortcut] = [] {
+        didSet {
+            // 避免初始化时的循环调用
+            guard !isInitializing else { return }
+            
+            // 更新热键绑定
+            HotKeyManager.shared.updateShortcuts(shortcuts)
+            
+            // 如果不是在切换场景过程中，则更新当前场景
+            if !isUpdatingScene {
+                updateCurrentSceneShortcuts()
+            }
+        }
+    }
+    @Published var theme: Theme = .system
     @Published var launchAtLogin: Bool = false
     @Published var totalUsageCount: Int = 0
     @Published var showFloatingWindow: Bool = true
     @Published var showWebShortcutsInFloatingWindow: Bool = false
     @Published var selectedShortcutIndex: Int = -1
     @Published var selectedWebShortcutIndex: Int = -1
-    
-    static let shared = AppSettings()
+    @Published var scenes: [Scene] = []
+    @Published var currentScene: Scene?
     
     private let shortcutsKey = "AppShortcuts"
     private let themeKey = "AppTheme"
@@ -38,18 +89,48 @@ class AppSettings: ObservableObject {
     private let showWebShortcutsInFloatingWindowKey = "ShowWebShortcutsInFloatingWindow"
     
     private init() {
+        isInitializing = true
         loadSettings()
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        
+        // 初始化场景
+        if scenes.isEmpty {
+            // 创建默认场景
+            let defaultScene = Scene(name: "默认场景", shortcuts: shortcuts)
+            scenes = [defaultScene]
+            currentScene = defaultScene
+        }
+        isInitializing = false
     }
     
     func loadSettings() {
-        if let data = UserDefaults.standard.data(forKey: shortcutsKey),
-           let shortcuts = try? JSONDecoder().decode([AppShortcut].self, from: data) {
-            self.shortcuts = shortcuts
+        // 加载场景数据
+        if let data = UserDefaults.standard.data(forKey: "scenes"),
+           let loadedScenes = try? JSONDecoder().decode([Scene].self, from: data) {
+            self.scenes = loadedScenes
+            
+            // 加载当前场景
+            if let currentSceneIdString = UserDefaults.standard.string(forKey: "currentSceneId"),
+               let currentSceneId = UUID(uuidString: currentSceneIdString) {
+                self.currentScene = scenes.first { $0.id == currentSceneId }
+            } else {
+                self.currentScene = scenes.first
+            }
+            
+            // 更新当前快捷键
+            if let currentScene = currentScene {
+                self.shortcuts = currentScene.shortcuts
+            }
+        } else {
+            // 加载旧版本的快捷键数据
+            if let data = UserDefaults.standard.data(forKey: shortcutsKey),
+               let shortcuts = try? JSONDecoder().decode([AppShortcut].self, from: data) {
+                self.shortcuts = shortcuts
+            }
         }
         
         if let themeString = UserDefaults.standard.string(forKey: themeKey),
-           let theme = AppTheme(rawValue: themeString) {
+           let theme = Theme(rawValue: themeString) {
             self.theme = theme
         }
         
@@ -59,9 +140,15 @@ class AppSettings: ObservableObject {
     }
     
     func saveSettings() {
-        if let data = try? JSONEncoder().encode(shortcuts) {
-            UserDefaults.standard.set(data, forKey: shortcutsKey)
+        // 保存场景数据
+        if let data = try? JSONEncoder().encode(scenes) {
+            UserDefaults.standard.set(data, forKey: "scenes")
         }
+        if let currentSceneId = currentScene?.id {
+            UserDefaults.standard.set(currentSceneId.uuidString, forKey: "currentSceneId")
+        }
+        
+        // 保存其他设置
         UserDefaults.standard.set(theme.rawValue, forKey: themeKey)
         UserDefaults.standard.set(totalUsageCount, forKey: usageCountKey)
         UserDefaults.standard.set(showFloatingWindow, forKey: showFloatingWindowKey)
@@ -164,5 +251,82 @@ class AppSettings: ObservableObject {
             return nil
         }
         return sortedWebShortcuts[selectedWebShortcutIndex]
+    }
+    
+    // 场景管理相关方法
+    func addScene(name: String) {
+        let newScene = Scene(name: name, shortcuts: [])
+        scenes.append(newScene)
+        saveSettings()
+    }
+    
+    func removeScene(_ scene: Scene) {
+        scenes.removeAll { $0.id == scene.id }
+        if currentScene?.id == scene.id {
+            currentScene = scenes.first
+            shortcuts = currentScene?.shortcuts ?? []
+        }
+        saveSettings()
+    }
+    
+    func switchScene(to scene: Scene) {
+        isUpdatingScene = true
+        
+        // 深拷贝场景的快捷键
+        if let data = try? JSONEncoder().encode(scene.shortcuts),
+           let copiedShortcuts = try? JSONDecoder().decode([AppShortcut].self, from: data) {
+            
+            // 创建新的场景对象
+            let newScene = Scene(id: scene.id, name: scene.name, shortcuts: copiedShortcuts)
+            
+            // 更新当前场景引用
+            currentScene = newScene
+            
+            // 更新scenes数组中的对应场景
+            if let index = scenes.firstIndex(where: { $0.id == scene.id }) {
+                scenes[index] = newScene
+            }
+            
+            // 更新快捷键列表
+            shortcuts = copiedShortcuts
+            
+            // 保存设置
+            saveSettings()
+            print("Switched to scene: \(scene.name) with \(copiedShortcuts.count) shortcuts")
+        }
+        
+        isUpdatingScene = false
+    }
+    
+    func updateShortcuts(_ newShortcuts: [AppShortcut], updateScene: Bool = true) {
+        isUpdatingScene = !updateScene
+        shortcuts = newShortcuts
+        if updateScene {
+            // 强制更新当前场景，不受 didSet 观察器的 isUpdatingScene 检查影响
+            updateCurrentSceneShortcuts()
+        }
+        isUpdatingScene = false
+    }
+    
+    func updateCurrentSceneShortcuts() {
+        guard let currentScene = currentScene else { return }
+        
+        // 深拷贝当前快捷键列表
+        if let data = try? JSONEncoder().encode(shortcuts),
+           let copiedShortcuts = try? JSONDecoder().decode([AppShortcut].self, from: data) {
+            
+            // 创建新的场景对象
+            let updatedScene = Scene(id: currentScene.id, name: currentScene.name, shortcuts: copiedShortcuts)
+            
+            // 更新scenes数组中的场景
+            if let index = scenes.firstIndex(where: { $0.id == currentScene.id }) {
+                scenes[index] = updatedScene
+                self.currentScene = updatedScene
+                
+                // 保存设置
+                saveSettings()
+                print("Scene shortcuts updated and saved: \(copiedShortcuts.count) shortcuts")
+            }
+        }
     }
 } 

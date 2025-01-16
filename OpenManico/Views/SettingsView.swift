@@ -7,15 +7,14 @@ struct SettingsView: View {
     @State private var showingExportDialog = false
     @State private var showingImportDialog = false
     @State private var hasAccessibilityPermission = AXIsProcessTrusted()
-    @State private var hasAutomationPermission = false
     
     var body: some View {
         Form {
             Section {
-                Picker("外观", selection: $settings.theme) {
-                    Text("跟随系统").tag(AppTheme.system)
-                    Text("浅色").tag(AppTheme.light)
-                    Text("深色").tag(AppTheme.dark)
+                Picker("主题", selection: $settings.theme) {
+                    Text("跟随系统").tag(Theme.system)
+                    Text("浅色").tag(Theme.light)
+                    Text("深色").tag(Theme.dark)
                 }
                 .pickerStyle(.menu)
                 .onChange(of: settings.theme) { _ in
@@ -23,12 +22,6 @@ struct SettingsView: View {
                     // 立即应用主题
                     if let appDelegate = NSApp.delegate as? AppDelegate {
                         appDelegate.applyTheme()
-                    }
-                    // 强制刷新所有窗口
-                    for window in NSApp.windows {
-                        window.invalidateShadow()
-                        window.contentView?.needsDisplay = true
-                        window.contentView?.needsLayout = true
                     }
                 }
             } header: {
@@ -56,22 +49,6 @@ struct SettingsView: View {
                 .onAppear {
                     // 每次视图出现时检查权限状态
                     hasAccessibilityPermission = AXIsProcessTrusted()
-                }
-                
-                HStack {
-                    Text("自动化权限")
-                    Spacer()
-                    if hasAutomationPermission {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                    } else {
-                        Button("前往设置") {
-                            openAutomationPreferences()
-                        }
-                    }
-                }
-                .onAppear {
-                    checkAutomationPermission()
                 }
                 
                 HStack {
@@ -126,9 +103,9 @@ struct SettingsView: View {
         ) { result in
             switch result {
             case .success(let url):
-                print("Shortcuts exported to \(url)")
+                print("Successfully exported settings to \(url)")
             case .failure(let error):
-                print("Export failed: \(error.localizedDescription)")
+                print("Failed to export settings: \(error)")
             }
         }
         .fileImporter(
@@ -138,38 +115,39 @@ struct SettingsView: View {
         ) { result in
             switch result {
             case .success(let urls):
-                if let url = urls.first {
-                    do {
-                        let data = try Data(contentsOf: url)
-                        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                        
-                        if let appShortcutsData = json?["appShortcuts"] as? [[String: String]] {
-                            settings.shortcuts = appShortcutsData.compactMap { shortcutData in
-                                guard let key = shortcutData["key"],
-                                      let bundleIdentifier = shortcutData["bundleIdentifier"],
-                                      let appName = shortcutData["appName"] else {
-                                    return nil
-                                }
-                                return AppShortcut(key: key, bundleIdentifier: bundleIdentifier, appName: appName)
-                            }
+                guard let url = urls.first else { return }
+                
+                // 读取并导入配置
+                if let data = try? Data(contentsOf: url),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    
+                    // 导入应用快捷键
+                    if let appShortcuts = json["appShortcuts"] as? [[String: String]] {
+                        let shortcuts = appShortcuts.compactMap { dict -> AppShortcut? in
+                            guard let key = dict["key"],
+                                  let bundleId = dict["bundleIdentifier"],
+                                  let name = dict["appName"] else { return nil }
+                            return AppShortcut(key: key,
+                                            bundleIdentifier: bundleId,
+                                            appName: name)
                         }
-                        
-                        if let webShortcutsData = json?["webShortcuts"] as? [[String: String]] {
-                            HotKeyManager.shared.webShortcutManager.shortcuts = webShortcutsData.compactMap { shortcutData in
-                                guard let key = shortcutData["key"],
-                                      let url = shortcutData["url"],
-                                      let name = shortcutData["name"] else {
-                                    return nil
-                                }
-                                return WebShortcut(key: key, url: url, name: name)
-                            }
-                        }
-                        
-                        settings.saveSettings()
-                        HotKeyManager.shared.webShortcutManager.saveShortcuts()
-                    } catch {
-                        print("Import failed: \(error.localizedDescription)")
+                        settings.shortcuts = shortcuts
                     }
+                    
+                    // 导入网站快捷键
+                    if let webShortcuts = json["webShortcuts"] as? [[String: String]] {
+                        let shortcuts = webShortcuts.compactMap { dict -> WebShortcut? in
+                            guard let key = dict["key"],
+                                  let url = dict["url"],
+                                  let name = dict["name"] else { return nil }
+                            return WebShortcut(key: key, url: url, name: name)
+                        }
+                        HotKeyManager.shared.webShortcutManager.shortcuts = shortcuts
+                    }
+                    
+                    print("Successfully imported settings")
+                } else {
+                    print("Failed to parse import file")
                 }
             case .failure(let error):
                 print("Import failed: \(error.localizedDescription)")
@@ -180,26 +158,6 @@ struct SettingsView: View {
     private func openAccessibilityPreferences() {
         let prefpaneUrl = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
         NSWorkspace.shared.open(prefpaneUrl)
-    }
-    
-    private func openAutomationPreferences() {
-        let prefpaneUrl = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!
-        NSWorkspace.shared.open(prefpaneUrl)
-    }
-    
-    private func checkAutomationPermission() {
-        // 检查是否有自动化权限
-        let appleScriptCommand = """
-        tell application "System Events"
-            return true
-        end tell
-        """
-        
-        var error: NSDictionary?
-        if let scriptObject = NSAppleScript(source: appleScriptCommand) {
-            let output = scriptObject.executeAndReturnError(&error)
-            hasAutomationPermission = error == nil && output.booleanValue
-        }
     }
 }
 
