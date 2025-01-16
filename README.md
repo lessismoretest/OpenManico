@@ -14,11 +14,13 @@ OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过
 ## 应用截图
 
 <div align="center">
-  <img src="Screenshots/home.png" width="800" alt="App 快捷键设置界面">  
+   <img src="Screenshots/scene.png" width="800" alt="场景配置界面">
+  <p><em>场景配置界面</em></p>
   <img src="Screenshots/searchapp.png" width="800" alt="通用设置界面">
   <p><em>App快捷键设置界面</em></p>
   <img src="Screenshots/webset.png" width="800" alt="网站快捷键设置界面">
   <p><em>网站快捷键设置界面</em></p>
+ 
   <img src="Screenshots/setting.png" width="800" alt="通用设置界面">
   <p><em>通用设置界面</em></p>
   <img src="Screenshots/floatset.png" width="800" alt="悬浮窗设置界面">
