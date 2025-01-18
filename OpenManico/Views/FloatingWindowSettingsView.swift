@@ -30,6 +30,13 @@ struct FloatingWindowSettingsView: View {
                             settings.saveSettings()
                         }
                     
+                    if settings.showWebShortcutsInFloatingWindow {
+                        Toggle("鼠标滑过时打开网站", isOn: $settings.openWebOnHover)
+                            .onChange(of: settings.openWebOnHover) { _ in
+                                settings.saveSettings()
+                            }
+                    }
+                    
                     Text("长按 Option 键显示应用快捷键悬浮窗")
                         .font(.callout)
                         .foregroundColor(.secondary)

@@ -84,6 +84,9 @@ struct DockIconsView: View {
                             .onHover { hovering in
                                 if hovering {
                                     settings.selectedWebShortcutIndex = index
+                                    if settings.openWebOnHover {
+                                        NSWorkspace.shared.open(URL(string: shortcut.url)!)
+                                    }
                                 } else if settings.selectedWebShortcutIndex == index {
                                     settings.selectedWebShortcutIndex = -1
                                 }
@@ -93,7 +96,6 @@ struct DockIconsView: View {
                                     .onEnded { _ in
                                         if settings.openOnMouseHover && settings.selectedWebShortcutIndex == index {
                                             NSWorkspace.shared.open(URL(string: shortcut.url)!)
-                                            DockIconsWindowController.shared.hideWindow()
                                         }
                                     }
                             )
