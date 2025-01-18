@@ -20,6 +20,11 @@ struct FloatingWindowSettingsView: View {
                             settings.saveSettings()
                         }
                     
+                    Toggle("鼠标悬停时松开按键打开", isOn: $settings.openOnMouseHover)
+                        .onChange(of: settings.openOnMouseHover) { _ in
+                            settings.saveSettings()
+                        }
+                    
                     Text("长按 Option 键显示应用快捷键悬浮窗")
                         .font(.callout)
                         .foregroundColor(.secondary)

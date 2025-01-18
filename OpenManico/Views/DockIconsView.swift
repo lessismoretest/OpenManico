@@ -24,6 +24,24 @@ struct DockIconsView: View {
                                     RoundedRectangle(cornerRadius: 8)
                                         .stroke(Color.white, lineWidth: settings.selectedShortcutIndex == index ? 2 : 0)
                                 )
+                                .onHover { hovering in
+                                    if hovering {
+                                        settings.selectedShortcutIndex = index
+                                    } else if settings.selectedShortcutIndex == index {
+                                        settings.selectedShortcutIndex = -1
+                                    }
+                                }
+                                .gesture(
+                                    DragGesture(minimumDistance: 0)
+                                        .onEnded { _ in
+                                            if settings.openOnMouseHover && settings.selectedShortcutIndex == index {
+                                                if let app = NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first {
+                                                    app.activate(options: .activateIgnoringOtherApps)
+                                                    DockIconsWindowController.shared.hideWindow()
+                                                }
+                                            }
+                                        }
+                                )
                             
                             Text(shortcut.key)
                                 .font(.system(size: 12, weight: .medium))
@@ -57,6 +75,22 @@ struct DockIconsView: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 4)
                                     .stroke(Color.white, lineWidth: settings.selectedWebShortcutIndex == index ? 2 : 0)
+                            )
+                            .onHover { hovering in
+                                if hovering {
+                                    settings.selectedWebShortcutIndex = index
+                                } else if settings.selectedWebShortcutIndex == index {
+                                    settings.selectedWebShortcutIndex = -1
+                                }
+                            }
+                            .gesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onEnded { _ in
+                                        if settings.openOnMouseHover && settings.selectedWebShortcutIndex == index {
+                                            NSWorkspace.shared.open(URL(string: shortcut.url)!)
+                                            DockIconsWindowController.shared.hideWindow()
+                                        }
+                                    }
                             )
                             
                             Text("⌘\(shortcut.key)")
