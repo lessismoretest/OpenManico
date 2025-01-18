@@ -15,6 +15,15 @@ struct FloatingWindowSettingsView: View {
                     }
                 
                 if settings.showFloatingWindow {
+                    Picker("应用显示设置", selection: $settings.appDisplayMode) {
+                        ForEach([AppDisplayMode.all, AppDisplayMode.running], id: \.self) { mode in
+                            Text(mode.description).tag(mode)
+                        }
+                    }
+                    .onChange(of: settings.appDisplayMode) { _ in
+                        settings.saveSettings()
+                    }
+                    
                     Toggle("显示网站快捷键", isOn: $settings.showWebShortcutsInFloatingWindow)
                         .onChange(of: settings.showWebShortcutsInFloatingWindow) { _ in
                             settings.saveSettings()
@@ -25,7 +34,7 @@ struct FloatingWindowSettingsView: View {
                             settings.saveSettings()
                         }
                     
-                    Toggle("鼠标滑过时显示应用窗口", isOn: $settings.showWindowOnHover)
+                    Toggle("鼠标滑过时打开应用", isOn: $settings.showWindowOnHover)
                         .onChange(of: settings.showWindowOnHover) { _ in
                             settings.saveSettings()
                         }

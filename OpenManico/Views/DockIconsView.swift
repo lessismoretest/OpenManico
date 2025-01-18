@@ -13,8 +13,8 @@ struct DockIconsView: View {
             // 应用程序图标
             HStack(spacing: 12) {
                 ForEach(Array(settings.shortcuts.sorted(by: { $0.key < $1.key }).enumerated()), id: \.element.id) { index, shortcut in
-                    if let app = NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first,
-                       let icon = app.icon {
+                    if settings.appDisplayMode == .all || NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first != nil,
+                       let icon = settings.appDisplayMode == .all ? NSWorkspace.shared.icon(forFile: NSWorkspace.shared.urlForApplication(withBundleIdentifier: shortcut.bundleIdentifier)?.path ?? "") : NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first?.icon {
                         VStack(spacing: 4) {
                             Image(nsImage: icon)
                                 .resizable()
@@ -31,6 +31,11 @@ struct DockIconsView: View {
                                             if let app = NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first {
                                                 app.activate(options: [.activateIgnoringOtherApps])
                                             }
+                                            else if let appUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: shortcut.bundleIdentifier) {
+                                                try? NSWorkspace.shared.launchApplication(at: appUrl,
+                                                                                       options: [.default],
+                                                                                       configuration: [:])
+                                            }
                                         }
                                     } else if settings.selectedShortcutIndex == index {
                                         settings.selectedShortcutIndex = -1
@@ -42,8 +47,13 @@ struct DockIconsView: View {
                                             if settings.openOnMouseHover && settings.selectedShortcutIndex == index {
                                                 if let app = NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first {
                                                     app.activate(options: .activateIgnoringOtherApps)
-                                                    DockIconsWindowController.shared.hideWindow()
                                                 }
+                                                else if let appUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: shortcut.bundleIdentifier) {
+                                                    try? NSWorkspace.shared.launchApplication(at: appUrl,
+                                                                                           options: [.default],
+                                                                                           configuration: [:])
+                                                }
+                                                DockIconsWindowController.shared.hideWindow()
                                             }
                                         }
                                 )

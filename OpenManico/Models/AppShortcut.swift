@@ -32,6 +32,20 @@ enum Theme: String, Codable {
     case system
 }
 
+enum AppDisplayMode: String, Codable {
+    case all = "all"
+    case running = "running"
+    
+    var description: String {
+        switch self {
+        case .all:
+            return "显示所有快捷键应用"
+        case .running:
+            return "只显示已打开的快捷键应用"
+        }
+    }
+}
+
 /// 场景模型
 struct Scene: Codable, Identifiable, Hashable {
     var id = UUID()
@@ -81,6 +95,8 @@ class AppSettings: ObservableObject {
     @Published var selectedWebShortcutIndex: Int = -1
     @Published var showWindowOnHover: Bool = false
     @Published var openWebOnHover: Bool = false
+    @Published var showAllAppsInFloatingWindow: Bool = true
+    @Published var appDisplayMode: AppDisplayMode = .all
     @Published var scenes: [Scene] = []
     @Published var currentScene: Scene?
     
@@ -93,6 +109,8 @@ class AppSettings: ObservableObject {
     private let openOnMouseHoverKey = "OpenOnMouseHover"
     private let showWindowOnHoverKey = "ShowWindowOnHover"
     private let openWebOnHoverKey = "OpenWebOnHover"
+    private let showAllAppsInFloatingWindowKey = "ShowAllAppsInFloatingWindow"
+    private let appDisplayModeKey = "AppDisplayMode"
     
     private init() {
         isInitializing = true
@@ -146,6 +164,15 @@ class AppSettings: ObservableObject {
         openOnMouseHover = UserDefaults.standard.bool(forKey: openOnMouseHoverKey)
         showWindowOnHover = UserDefaults.standard.bool(forKey: showWindowOnHoverKey)
         openWebOnHover = UserDefaults.standard.bool(forKey: openWebOnHoverKey)
+        showAllAppsInFloatingWindow = UserDefaults.standard.bool(forKey: showAllAppsInFloatingWindowKey)
+        if !UserDefaults.standard.contains(key: showAllAppsInFloatingWindowKey) {
+            showAllAppsInFloatingWindow = true  // 设置默认值
+            UserDefaults.standard.set(true, forKey: showAllAppsInFloatingWindowKey)
+        }
+        if let modeString = UserDefaults.standard.string(forKey: appDisplayModeKey),
+           let mode = AppDisplayMode(rawValue: modeString) {
+            appDisplayMode = mode
+        }
     }
     
     func saveSettings() {
@@ -165,6 +192,8 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(openOnMouseHover, forKey: openOnMouseHoverKey)
         UserDefaults.standard.set(showWindowOnHover, forKey: showWindowOnHoverKey)
         UserDefaults.standard.set(openWebOnHover, forKey: openWebOnHoverKey)
+        UserDefaults.standard.set(showAllAppsInFloatingWindow, forKey: showAllAppsInFloatingWindowKey)
+        UserDefaults.standard.set(appDisplayMode.rawValue, forKey: appDisplayModeKey)
     }
     
     func incrementUsageCount() {
@@ -374,5 +403,11 @@ class AppSettings: ObservableObject {
                 print("Scene shortcuts updated and saved: \(copiedShortcuts.count) shortcuts")
             }
         }
+    }
+}
+
+extension UserDefaults {
+    func contains(key: String) -> Bool {
+        return object(forKey: key) != nil
     }
 } 
