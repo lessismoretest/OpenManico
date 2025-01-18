@@ -319,15 +319,18 @@ class HotKeyManager: ObservableObject {
                 DispatchQueue.main.async {
                     DockIconsWindowController.shared.hideWindow()
                     
-                    // 根据选中状态打开应用或网站
-                    if let webShortcut = AppSettings.shared.selectedWebShortcut,
-                       let url = URL(string: webShortcut.url) {
-                        NSWorkspace.shared.open(url)
-                    } else if let shortcut = AppSettings.shared.selectedShortcut {
-                        self.switchToApp(bundleIdentifier: shortcut.bundleIdentifier)
+                    // 只有在有选中状态时才切换应用或网站
+                    if AppSettings.shared.selectedWebShortcut != nil || AppSettings.shared.selectedShortcut != nil {
+                        // 根据选中状态打开应用或网站
+                        if let webShortcut = AppSettings.shared.selectedWebShortcut,
+                           let url = URL(string: webShortcut.url) {
+                            NSWorkspace.shared.open(url)
+                        } else if let shortcut = AppSettings.shared.selectedShortcut {
+                            self.switchToApp(bundleIdentifier: shortcut.bundleIdentifier)
+                        }
+                        
+                        AppSettings.shared.resetSelection() // 重置选中状态
                     }
-                    
-                    AppSettings.shared.resetSelection() // 重置选中状态
                 }
             }
         }
