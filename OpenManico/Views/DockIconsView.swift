@@ -27,6 +27,11 @@ struct DockIconsView: View {
                                 .onHover { hovering in
                                     if hovering {
                                         settings.selectedShortcutIndex = index
+                                        if settings.showWindowOnHover {
+                                            if let app = NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first {
+                                                app.activate(options: [.activateIgnoringOtherApps])
+                                            }
+                                        }
                                     } else if settings.selectedShortcutIndex == index {
                                         settings.selectedShortcutIndex = -1
                                     }
@@ -146,6 +151,7 @@ class DockIconsWindowController {
             window.isOpaque = false
             window.level = .floating
             window.hasShadow = false
+            window.collectionBehavior = [.canJoinAllSpaces, .stationary]
             
             self.window = window
         }

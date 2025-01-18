@@ -25,6 +25,11 @@ struct FloatingWindowSettingsView: View {
                             settings.saveSettings()
                         }
                     
+                    Toggle("鼠标滑过时显示应用窗口", isOn: $settings.showWindowOnHover)
+                        .onChange(of: settings.showWindowOnHover) { _ in
+                            settings.saveSettings()
+                        }
+                    
                     Text("长按 Option 键显示应用快捷键悬浮窗")
                         .font(.callout)
                         .foregroundColor(.secondary)

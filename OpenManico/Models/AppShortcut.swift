@@ -79,6 +79,7 @@ class AppSettings: ObservableObject {
     @Published var openOnMouseHover: Bool = false
     @Published var selectedShortcutIndex: Int = -1
     @Published var selectedWebShortcutIndex: Int = -1
+    @Published var showWindowOnHover: Bool = false
     @Published var scenes: [Scene] = []
     @Published var currentScene: Scene?
     
@@ -89,6 +90,7 @@ class AppSettings: ObservableObject {
     private let showFloatingWindowKey = "ShowFloatingWindow"
     private let showWebShortcutsInFloatingWindowKey = "ShowWebShortcutsInFloatingWindow"
     private let openOnMouseHoverKey = "OpenOnMouseHover"
+    private let showWindowOnHoverKey = "ShowWindowOnHover"
     
     private init() {
         isInitializing = true
@@ -140,6 +142,7 @@ class AppSettings: ObservableObject {
         showFloatingWindow = UserDefaults.standard.bool(forKey: showFloatingWindowKey)
         showWebShortcutsInFloatingWindow = UserDefaults.standard.bool(forKey: showWebShortcutsInFloatingWindowKey)
         openOnMouseHover = UserDefaults.standard.bool(forKey: openOnMouseHoverKey)
+        showWindowOnHover = UserDefaults.standard.bool(forKey: showWindowOnHoverKey)
     }
     
     func saveSettings() {
@@ -157,6 +160,7 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(showFloatingWindow, forKey: showFloatingWindowKey)
         UserDefaults.standard.set(showWebShortcutsInFloatingWindow, forKey: showWebShortcutsInFloatingWindowKey)
         UserDefaults.standard.set(openOnMouseHover, forKey: openOnMouseHoverKey)
+        UserDefaults.standard.set(showWindowOnHover, forKey: showWindowOnHoverKey)
     }
     
     func incrementUsageCount() {
