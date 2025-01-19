@@ -36,6 +36,7 @@ enum AppDisplayMode: String, Codable {
     case all = "all"
     case running = "running"
     case installed = "installed"
+    case switcher = "switcher"
     
     var description: String {
         switch self {
@@ -45,6 +46,8 @@ enum AppDisplayMode: String, Codable {
             return "只显示已打开的快捷键应用"
         case .installed:
             return "显示所有已安装应用"
+        case .switcher:
+            return "显示应用切换器应用"
         }
     }
 }

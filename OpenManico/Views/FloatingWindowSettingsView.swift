@@ -167,7 +167,7 @@ struct FloatingWindowSettingsView: View {
                         }
                     
                     Picker("应用显示模式", selection: $settings.appDisplayMode) {
-                        ForEach([AppDisplayMode.all, AppDisplayMode.running, AppDisplayMode.installed], id: \.self) { mode in
+                        ForEach([AppDisplayMode.all, AppDisplayMode.running, AppDisplayMode.installed, AppDisplayMode.switcher], id: \.self) { mode in
                             Text(mode.description).tag(mode)
                         }
                     }

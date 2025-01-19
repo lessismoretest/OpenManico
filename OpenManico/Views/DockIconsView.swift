@@ -12,6 +12,38 @@ struct DockIconsView: View {
     @State private var installedApps: [AppInfo] = []
     @State private var selectedAppGroup: UUID? = nil
     @State private var selectedWebGroup: UUID? = nil
+    @State private var isScanning = false
+    
+    private var switcherApps: [AppInfo] {
+        let workspace = NSWorkspace.shared
+        let frontmost = workspace.frontmostApplication
+        let menuBarOwner = workspace.menuBarOwningApplication
+        
+        return workspace.runningApplications
+            .filter { $0.activationPolicy == .regular }
+            .sorted { (app1: NSRunningApplication, app2: NSRunningApplication) in
+                // 前台应用优先
+                if app1 == frontmost { return true }
+                if app2 == frontmost { return false }
+                // 菜单栏应用次之
+                if app1 == menuBarOwner { return true }
+                if app2 == menuBarOwner { return false }
+                // 其他应用按启动时间排序
+                guard let date1 = app1.launchDate,
+                      let date2 = app2.launchDate else {
+                    return false
+                }
+                return date1 > date2
+            }
+            .compactMap { app in
+                guard let bundleId = app.bundleIdentifier,
+                      let name = app.localizedName,
+                      let icon = app.icon else {
+                    return nil
+                }
+                return AppInfo(bundleId: bundleId, name: name, icon: icon, url: app.bundleURL)
+            }
+    }
     
     var body: some View {
         VStack(spacing: 16) {
@@ -92,31 +124,23 @@ struct DockIconsView: View {
                     LazyVGrid(columns: [
                         GridItem(.adaptive(minimum: settings.appIconSize + 20), spacing: 16)
                     ], spacing: 16) {
-                        ForEach(filteredApps, id: \.bundleId) { app in
-                            VStack {
-                                Image(nsImage: app.icon)
-                                    .resizable()
-                                    .frame(width: settings.appIconSize, height: settings.appIconSize)
-                                    .onTapGesture {
-                                        if let url = app.url {
-                                            print("打开应用: \(app.name) at \(url)")
-                                            NSWorkspace.shared.open(url)
-                                        }
-                                    }
-                                
-                                Text(app.name)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.white)
-                                    .lineLimit(1)
-                            }
-                            .frame(width: 100)
+                        ForEach(filteredInstalledApps, id: \.bundleId) { app in
+                            AppIconView(app: app)
                         }
                     }
-                    .padding(.horizontal, 8)
+                    .padding()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onAppear {
-                    print("显示已安装应用列表，当前数量: \(installedApps.count)")
+            } else if settings.appDisplayMode == .switcher {
+                // 显示应用切换器应用列表
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.adaptive(minimum: settings.appIconSize + 20), spacing: 16)
+                    ], spacing: 16) {
+                        ForEach(switcherApps, id: \.bundleId) { app in
+                            AppIconView(app: app)
+                        }
+                    }
+                    .padding()
                 }
             } else {
                 // 应用程序图标
@@ -163,24 +187,6 @@ struct DockIconsView: View {
                                                 settings.selectedShortcutIndex = -1
                                             }
                                         }
-                                        .gesture(
-                                            DragGesture(minimumDistance: 0)
-                                                .onEnded { _ in
-                                                    if settings.openOnMouseHover && settings.selectedShortcutIndex == index {
-                                                        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: shortcut.bundleIdentifier).first {
-                                                            app.activate(options: .activateIgnoringOtherApps)
-                                                        }
-                                                        else if let appUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: shortcut.bundleIdentifier) {
-                                                            try? NSWorkspace.shared.launchApplication(at: appUrl,
-                                                                                                   options: [.default],
-                                                                                                   configuration: [:])
-                                                        }
-                                                        if !hotKeyManager.isOptionKeyPressed {
-                                                            DockIconsWindowController.shared.hideWindow()
-                                                        }
-                                                    }
-                                                }
-                                        )
                                     
                                     Text(shortcut.key)
                                         .font(.system(size: 12, weight: .medium))
@@ -189,6 +195,7 @@ struct DockIconsView: View {
                             }
                         }
                     }
+                    .padding(.horizontal, 8)
                 }
             }
             
@@ -464,7 +471,7 @@ struct DockIconsView: View {
     }
     
     // 根据选中的分组过滤应用列表
-    private var filteredApps: [AppInfo] {
+    private var filteredInstalledApps: [AppInfo] {
         // 如果没有选中分组，返回所有应用
         guard let selectedGroupId = selectedAppGroup else {
             return installedApps
@@ -478,6 +485,37 @@ struct DockIconsView: View {
         // 过滤应用列表
         return installedApps.filter { app in
             selectedGroup.apps.contains(where: { $0.bundleId == app.bundleId })
+        }
+    }
+}
+
+struct AppIconView: View {
+    let app: AppInfo
+    @State private var isHovering = false
+    
+    var body: some View {
+        VStack {
+            Image(nsImage: app.icon)
+                .resizable()
+                .frame(width: AppSettings.shared.appIconSize, height: AppSettings.shared.appIconSize)
+                .onTapGesture {
+                    if let url = app.url {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            Text(app.name)
+                .font(.caption)
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .frame(width: 60)
+        }
+        .onHover { hovering in
+            isHovering = hovering
+            if hovering && AppSettings.shared.showWindowOnHover {
+                if let url = app.url {
+                    NSWorkspace.shared.open(url)
+                }
+            }
         }
     }
 }
