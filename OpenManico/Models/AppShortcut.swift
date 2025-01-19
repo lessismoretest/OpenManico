@@ -35,6 +35,7 @@ enum Theme: String, Codable {
 enum AppDisplayMode: String, Codable {
     case all = "all"
     case running = "running"
+    case installed = "installed"
     
     var description: String {
         switch self {
@@ -42,6 +43,22 @@ enum AppDisplayMode: String, Codable {
             return "显示所有快捷键应用"
         case .running:
             return "只显示已打开的快捷键应用"
+        case .installed:
+            return "显示所有已安装应用"
+        }
+    }
+}
+
+enum WebsiteDisplayMode: String, Codable {
+    case shortcutOnly = "shortcutOnly"
+    case all = "all"
+    
+    var description: String {
+        switch self {
+        case .shortcutOnly:
+            return "只显示快捷键网站"
+        case .all:
+            return "显示所有网站"
         }
     }
 }
@@ -65,11 +82,117 @@ struct Scene: Codable, Identifiable, Hashable {
     }
 }
 
+enum WindowPosition: String, Codable {
+    case topLeft = "topLeft"
+    case topCenter = "topCenter"
+    case topRight = "topRight"
+    case centerLeft = "centerLeft"
+    case center = "center"
+    case centerRight = "centerRight"
+    case bottomLeft = "bottomLeft"
+    case bottomCenter = "bottomCenter"
+    case bottomRight = "bottomRight"
+    case custom = "custom"
+    
+    var description: String {
+        switch self {
+        case .topLeft: return "左上角"
+        case .topCenter: return "顶部居中"
+        case .topRight: return "右上角"
+        case .centerLeft: return "左侧居中"
+        case .center: return "屏幕居中"
+        case .centerRight: return "右侧居中"
+        case .bottomLeft: return "左下角"
+        case .bottomCenter: return "底部居中"
+        case .bottomRight: return "右下角"
+        case .custom: return "自定义位置"
+        }
+    }
+}
+
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
     
     private var isInitializing = true
     private var isUpdatingScene = false
+    
+    @Published var floatingWindowWidth: Double = 600 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var floatingWindowHeight: Double = 400 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var floatingWindowOpacity: Double = 0.8 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var useBlurEffect: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var blurRadius: Double = 20 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var floatingWindowX: Double = -1 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var floatingWindowY: Double = -1 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var windowPosition: WindowPosition = .center {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var iconSize: Double = 48 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var appIconSize: Double = 48 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var webIconSize: Double = 48 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var appIconsPerRow: Double = 5 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var webIconsPerRow: Double = 8 {
+        didSet {
+            saveSettings()
+        }
+    }
     
     @Published var shortcuts: [AppShortcut] = [] {
         didSet {
@@ -96,10 +219,23 @@ class AppSettings: ObservableObject {
     @Published var showWindowOnHover: Bool = false
     @Published var openWebOnHover: Bool = false
     @Published var showAllAppsInFloatingWindow: Bool = true
-    @Published var appDisplayMode: AppDisplayMode = .all
+    @Published var appDisplayMode: AppDisplayMode = .all {
+        didSet {
+            print("应用显示模式改变: \(oldValue) -> \(appDisplayMode)")
+            saveSettings()
+        }
+    }
     @Published var showSceneSwitcherInFloatingWindow: Bool = true
     @Published var scenes: [Scene] = []
     @Published var currentScene: Scene?
+    @Published var websiteDisplayMode: WebsiteDisplayMode = .shortcutOnly {
+        didSet {
+            print("网站显示模式改变: \(oldValue) -> \(websiteDisplayMode)")
+            saveSettings()
+            // 打印保存后的值，用于调试
+            print("保存后的网站显示模式: \(UserDefaults.standard.string(forKey: websiteDisplayModeKey) ?? "nil")")
+        }
+    }
     
     private let shortcutsKey = "AppShortcuts"
     private let themeKey = "AppTheme"
@@ -113,11 +249,26 @@ class AppSettings: ObservableObject {
     private let showAllAppsInFloatingWindowKey = "ShowAllAppsInFloatingWindow"
     private let showSceneSwitcherInFloatingWindowKey = "ShowSceneSwitcherInFloatingWindow"
     private let appDisplayModeKey = "AppDisplayMode"
+    private let websiteDisplayModeKey = "WebsiteDisplayMode"
+    private let iconSizeKey = "IconSize"
+    private let appIconSizeKey = "AppIconSize"
+    private let webIconSizeKey = "WebIconSize"
+    private let appIconsPerRowKey = "AppIconsPerRow"
+    private let webIconsPerRowKey = "WebIconsPerRow"
+    private let floatingWindowWidthKey = "FloatingWindowWidth"
+    private let floatingWindowHeightKey = "FloatingWindowHeight"
+    private let floatingWindowOpacityKey = "FloatingWindowOpacity"
+    private let useBlurEffectKey = "UseBlurEffect"
+    private let blurRadiusKey = "BlurRadius"
+    private let floatingWindowXKey = "FloatingWindowX"
+    private let floatingWindowYKey = "FloatingWindowY"
+    private let windowPositionKey = "WindowPosition"
     
     private init() {
         isInitializing = true
+        
+        // 加载所有设置
         loadSettings()
-        launchAtLogin = SMAppService.mainApp.status == .enabled
         
         // 初始化场景
         if scenes.isEmpty {
@@ -125,7 +276,12 @@ class AppSettings: ObservableObject {
             let defaultScene = Scene(name: "默认场景", shortcuts: shortcuts)
             scenes = [defaultScene]
             currentScene = defaultScene
+            saveSettings() // 保存初始场景
         }
+        
+        // 设置启动登录状态
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+        
         isInitializing = false
     }
     
@@ -133,12 +289,14 @@ class AppSettings: ObservableObject {
         // 加载场景数据
         if let data = UserDefaults.standard.data(forKey: "scenes"),
            let loadedScenes = try? JSONDecoder().decode([Scene].self, from: data) {
+            print("[AppSettings] 成功加载 \(loadedScenes.count) 个场景")
             self.scenes = loadedScenes
             
             // 加载当前场景
             if let currentSceneIdString = UserDefaults.standard.string(forKey: "currentSceneId"),
                let currentSceneId = UUID(uuidString: currentSceneIdString) {
                 self.currentScene = scenes.first { $0.id == currentSceneId }
+                print("[AppSettings] 已恢复当前场景: \(self.currentScene?.name ?? "未知")")
             } else {
                 self.currentScene = scenes.first
             }
@@ -146,20 +304,40 @@ class AppSettings: ObservableObject {
             // 更新当前快捷键
             if let currentScene = currentScene {
                 self.shortcuts = currentScene.shortcuts
+                print("[AppSettings] 已加载当前场景的 \(currentScene.shortcuts.count) 个快捷键")
             }
         } else {
             // 加载旧版本的快捷键数据
             if let data = UserDefaults.standard.data(forKey: shortcutsKey),
                let shortcuts = try? JSONDecoder().decode([AppShortcut].self, from: data) {
+                print("[AppSettings] 从旧版本加载了 \(shortcuts.count) 个快捷键")
                 self.shortcuts = shortcuts
             }
         }
         
+        // 加载主题
         if let themeString = UserDefaults.standard.string(forKey: themeKey),
            let theme = Theme(rawValue: themeString) {
             self.theme = theme
         }
         
+        // 加载网站显示模式
+        if let modeString = UserDefaults.standard.string(forKey: websiteDisplayModeKey) {
+            print("[AppSettings] 从 UserDefaults 读取到网站显示模式: \(modeString)")
+            if let mode = WebsiteDisplayMode(rawValue: modeString) {
+                websiteDisplayMode = mode
+                print("[AppSettings] 成功设置网站显示模式为: \(mode)")
+            }
+        }
+        
+        // 加载应用显示模式
+        if let modeString = UserDefaults.standard.string(forKey: appDisplayModeKey),
+           let mode = AppDisplayMode(rawValue: modeString) {
+            appDisplayMode = mode
+            print("[AppSettings] 成功设置应用显示模式为: \(mode)")
+        }
+        
+        // 加载其他布尔值设置
         totalUsageCount = UserDefaults.standard.integer(forKey: usageCountKey)
         showFloatingWindow = UserDefaults.standard.bool(forKey: showFloatingWindowKey)
         showWebShortcutsInFloatingWindow = UserDefaults.standard.bool(forKey: showWebShortcutsInFloatingWindowKey)
@@ -167,24 +345,80 @@ class AppSettings: ObservableObject {
         showWindowOnHover = UserDefaults.standard.bool(forKey: showWindowOnHoverKey)
         openWebOnHover = UserDefaults.standard.bool(forKey: openWebOnHoverKey)
         showAllAppsInFloatingWindow = UserDefaults.standard.bool(forKey: showAllAppsInFloatingWindowKey)
-        if !UserDefaults.standard.contains(key: showAllAppsInFloatingWindowKey) {
-            showAllAppsInFloatingWindow = true  // 设置默认值
-            UserDefaults.standard.set(true, forKey: showAllAppsInFloatingWindowKey)
-        }
-        if let modeString = UserDefaults.standard.string(forKey: appDisplayModeKey),
-           let mode = AppDisplayMode(rawValue: modeString) {
-            appDisplayMode = mode
-        }
         showSceneSwitcherInFloatingWindow = UserDefaults.standard.bool(forKey: showSceneSwitcherInFloatingWindowKey)
+        
+        // 加载数值设置，如果没有则使用默认值
+        iconSize = UserDefaults.standard.double(forKey: iconSizeKey)
+        if !UserDefaults.standard.contains(key: iconSizeKey) {
+            iconSize = 48
+            UserDefaults.standard.set(48, forKey: iconSizeKey)
+        }
+        
+        appIconSize = UserDefaults.standard.double(forKey: appIconSizeKey)
+        if !UserDefaults.standard.contains(key: appIconSizeKey) {
+            appIconSize = 48
+            UserDefaults.standard.set(48, forKey: appIconSizeKey)
+        }
+        
+        webIconSize = UserDefaults.standard.double(forKey: webIconSizeKey)
+        if !UserDefaults.standard.contains(key: webIconSizeKey) {
+            webIconSize = 48
+            UserDefaults.standard.set(48, forKey: webIconSizeKey)
+        }
+        
+        floatingWindowWidth = UserDefaults.standard.double(forKey: floatingWindowWidthKey)
+        if !UserDefaults.standard.contains(key: floatingWindowWidthKey) {
+            floatingWindowWidth = 600
+            UserDefaults.standard.set(600, forKey: floatingWindowWidthKey)
+        }
+        
+        floatingWindowHeight = UserDefaults.standard.double(forKey: floatingWindowHeightKey)
+        if !UserDefaults.standard.contains(key: floatingWindowHeightKey) {
+            floatingWindowHeight = 400
+            UserDefaults.standard.set(400, forKey: floatingWindowHeightKey)
+        }
+        
+        floatingWindowOpacity = UserDefaults.standard.double(forKey: floatingWindowOpacityKey)
+        if !UserDefaults.standard.contains(key: floatingWindowOpacityKey) {
+            floatingWindowOpacity = 0.8
+            UserDefaults.standard.set(0.8, forKey: floatingWindowOpacityKey)
+        }
+        
+        useBlurEffect = UserDefaults.standard.bool(forKey: useBlurEffectKey)
+        blurRadius = UserDefaults.standard.double(forKey: blurRadiusKey)
+        if !UserDefaults.standard.contains(key: blurRadiusKey) {
+            blurRadius = 20
+            UserDefaults.standard.set(20, forKey: blurRadiusKey)
+        }
+        
+        floatingWindowX = UserDefaults.standard.double(forKey: floatingWindowXKey)
+        floatingWindowY = UserDefaults.standard.double(forKey: floatingWindowYKey)
+        
+        if let positionString = UserDefaults.standard.string(forKey: windowPositionKey),
+           let position = WindowPosition(rawValue: positionString) {
+            windowPosition = position
+        }
+        
+        // 确保所有默认值都被保存
+        UserDefaults.standard.synchronize()
     }
     
     func saveSettings() {
+        // 避免初始化时的保存
+        guard !isInitializing else { return }
+        
+        print("[AppSettings] 开始保存设置...")
+        
         // 保存场景数据
         if let data = try? JSONEncoder().encode(scenes) {
             UserDefaults.standard.set(data, forKey: "scenes")
+            print("[AppSettings] 已保存 \(scenes.count) 个场景")
         }
+        
+        // 保存当前场景ID
         if let currentSceneId = currentScene?.id {
             UserDefaults.standard.set(currentSceneId.uuidString, forKey: "currentSceneId")
+            print("[AppSettings] 已保存当前场景ID: \(currentSceneId)")
         }
         
         // 保存其他设置
@@ -198,6 +432,22 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(showAllAppsInFloatingWindow, forKey: showAllAppsInFloatingWindowKey)
         UserDefaults.standard.set(showSceneSwitcherInFloatingWindow, forKey: showSceneSwitcherInFloatingWindowKey)
         UserDefaults.standard.set(appDisplayMode.rawValue, forKey: appDisplayModeKey)
+        UserDefaults.standard.set(websiteDisplayMode.rawValue, forKey: websiteDisplayModeKey)
+        UserDefaults.standard.set(iconSize, forKey: iconSizeKey)
+        UserDefaults.standard.set(appIconSize, forKey: appIconSizeKey)
+        UserDefaults.standard.set(webIconSize, forKey: webIconSizeKey)
+        UserDefaults.standard.set(floatingWindowWidth, forKey: floatingWindowWidthKey)
+        UserDefaults.standard.set(floatingWindowHeight, forKey: floatingWindowHeightKey)
+        UserDefaults.standard.set(floatingWindowOpacity, forKey: floatingWindowOpacityKey)
+        UserDefaults.standard.set(useBlurEffect, forKey: useBlurEffectKey)
+        UserDefaults.standard.set(blurRadius, forKey: blurRadiusKey)
+        UserDefaults.standard.set(floatingWindowX, forKey: floatingWindowXKey)
+        UserDefaults.standard.set(floatingWindowY, forKey: floatingWindowYKey)
+        UserDefaults.standard.set(windowPosition.rawValue, forKey: windowPositionKey)
+        
+        // 立即同步所有设置
+        UserDefaults.standard.synchronize()
+        print("[AppSettings] 设置保存完成")
     }
     
     func incrementUsageCount() {

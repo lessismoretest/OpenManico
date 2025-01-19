@@ -9,67 +9,28 @@ struct WebShortcut: Identifiable, Codable, Hashable {
     let id = UUID()
     /// 快捷键绑定的按键
     var key: String
-    /// 目标网站URL
-    var url: String
-    /// 网站名称
-    var name: String
+    /// 关联的网站ID
+    var websiteId: UUID
     /// 是否启用
     var isEnabled: Bool = true
     
     /// 获取网站图标
     func fetchIcon(completion: @escaping (NSImage?) -> Void) {
-        guard let url = URL(string: self.url),
-              let host = url.host else {
+        if let website = WebsiteManager.shared.findWebsite(id: websiteId) {
+            website.fetchIcon(completion: completion)
+        } else {
             completion(nil)
-            return
         }
-        
-        // 首先尝试从网站直接获取 favicon
-        let faviconURL = "\(url.scheme ?? "https")://\(host)/favicon.ico"
-        guard let faviconRequestURL = URL(string: faviconURL) else {
-            completion(nil)
-            return
-        }
-        
-        // 创建一个高优先级的队列来处理图标获取
-        let queue = DispatchQueue(label: "com.openmanico.favicon", qos: .userInitiated)
-        
-        queue.async {
-            let directFaviconTask = URLSession.shared.dataTask(with: faviconRequestURL) { data, response, error in
-                if let data = data,
-                   let image = NSImage(data: data),
-                   image.size.width > 0 { // 验证图片是否有效
-                    DispatchQueue.main.async {
-                        completion(image)
-                    }
-                } else {
-                    // 如果直接获取失败，尝试从 Google 获取
-                    let googleFaviconURL = "https://www.google.com/s2/favicons?domain=\(host)&sz=64"
-                    guard let googleURL = URL(string: googleFaviconURL) else {
-                        DispatchQueue.main.async {
-                            completion(nil)
-                        }
-                        return
-                    }
-                    
-                    let googleFaviconTask = URLSession.shared.dataTask(with: googleURL) { data, response, error in
-                        if let data = data,
-                           let image = NSImage(data: data),
-                           image.size.width > 0 {
-                            DispatchQueue.main.async {
-                                completion(image)
-                            }
-                        } else {
-                            DispatchQueue.main.async {
-                                completion(nil)
-                            }
-                        }
-                    }
-                    googleFaviconTask.resume()
-                }
-            }
-            directFaviconTask.resume()
-        }
+    }
+    
+    /// 获取网站名称
+    var name: String {
+        WebsiteManager.shared.findWebsite(id: websiteId)?.name ?? ""
+    }
+    
+    /// 获取网站URL
+    var url: String {
+        WebsiteManager.shared.findWebsite(id: websiteId)?.url ?? ""
     }
 }
 
@@ -165,7 +126,8 @@ class WebShortcutManager: ObservableObject {
     }
     
     /// 添加新的网站快捷键
-    func addShortcut(_ shortcut: WebShortcut) {
+    func addShortcut(key: String, website: Website) {
+        let shortcut = WebShortcut(key: key, websiteId: website.id)
         shortcuts.append(shortcut)
         saveShortcuts()
     }

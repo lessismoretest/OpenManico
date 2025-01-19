@@ -18,6 +18,16 @@ struct ContentView: View {
                     Label("网站快捷键", systemImage: "globe")
                 }
                 
+                NavigationLink(destination: WebsiteListView()
+                    .navigationTitle("网站列表")) {
+                    Label("网站列表", systemImage: "list.bullet")
+                }
+                
+                NavigationLink(destination: AppListView()
+                    .navigationTitle("应用列表")) {
+                    Label("应用列表", systemImage: "square.grid.2x2")
+                }
+                
                 NavigationLink(destination: FloatingWindowSettingsView()
                     .navigationTitle("悬浮窗")) {
                     Label("悬浮窗", systemImage: "rectangle.on.rectangle")

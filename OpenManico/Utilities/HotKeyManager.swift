@@ -44,7 +44,7 @@ class HotKeyManager: ObservableObject {
     
     // Option 键长按计时器
     private var optionKeyTimer: Timer?
-    private var isOptionKeyPressed = false
+    @Published var isOptionKeyPressed = false
     private var isCommandKeyPressed = false
     
     init() {
@@ -306,7 +306,7 @@ class HotKeyManager: ObservableObject {
                     // Option 键长按超过 0.5 秒
                     DispatchQueue.main.async {
                         if AppSettings.shared.showFloatingWindow {
-                            DockIconsWindowController.shared.showWindow()
+                            DockIconsWindowController.shared.toggleWindow()
                             AppSettings.shared.resetSelection() // 重置选中状态
                         }
                     }

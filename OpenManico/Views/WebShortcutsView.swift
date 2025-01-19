@@ -5,10 +5,13 @@ import SwiftUI
  */
 struct WebShortcutsView: View {
     @StateObject private var webShortcutManager = HotKeyManager.shared.webShortcutManager
+    @StateObject private var websiteManager = WebsiteManager.shared
     @State private var showingAddScene = false
     @State private var showingRenameScene = false
     @State private var newSceneName = ""
     @State private var sceneToRename: WebScene?
+    @State private var showingWebsiteSelector = false
+    @State private var selectedKey = ""
     
     private let availableKeys = (1...9).map(String.init) + (65...90).map { String(UnicodeScalar($0)) }
     
@@ -70,7 +73,13 @@ struct WebShortcutsView: View {
             
             List {
                 ForEach(availableKeys, id: \.self) { key in
-                    WebShortcutRow(key: key, webShortcutManager: webShortcutManager)
+                    WebShortcutRow(key: key,
+                                 webShortcutManager: webShortcutManager,
+                                 websiteManager: websiteManager,
+                                 onAdd: {
+                        selectedKey = key
+                        showingWebsiteSelector = true
+                    })
                 }
             }
             .listStyle(InsetListStyle())
@@ -134,9 +143,11 @@ struct WebShortcutsView: View {
             .padding()
             .frame(width: 300, height: 150)
         }
-        // 监听快捷键变化
-        .onChange(of: webShortcutManager.shortcuts) { _ in
-            webShortcutManager.updateCurrentSceneShortcuts()
+        .sheet(isPresented: $showingWebsiteSelector) {
+            WebsiteSelectorView(selectedKey: selectedKey) { website in
+                webShortcutManager.addShortcut(key: selectedKey, website: website)
+                showingWebsiteSelector = false
+            }
         }
     }
 }
@@ -147,12 +158,20 @@ struct WebShortcutsView: View {
 struct WebShortcutRow: View {
     let key: String
     @ObservedObject var webShortcutManager: WebShortcutManager
-    @State private var isEditing = false
-    @State private var url = ""
+    @ObservedObject var websiteManager: WebsiteManager
+    let onAdd: () -> Void
+    
     @State private var icon: NSImage?
     
     private var shortcut: WebShortcut? {
         webShortcutManager.shortcuts.first { $0.key == key }
+    }
+    
+    private var website: Website? {
+        if let shortcut = shortcut {
+            return websiteManager.findWebsite(id: shortcut.websiteId)
+        }
+        return nil
     }
     
     var body: some View {
@@ -162,7 +181,7 @@ struct WebShortcutRow: View {
                 .lineLimit(1)
                 .fixedSize()
             
-            if let shortcut = shortcut {
+            if let website = website {
                 if let icon = icon {
                     Image(nsImage: icon)
                         .resizable()
@@ -170,35 +189,17 @@ struct WebShortcutRow: View {
                         .frame(width: 16, height: 16)
                 }
                 
-                if isEditing {
-                    TextField("输入网址", text: $url)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .onSubmit {
-                            updateShortcut()
-                        }
-                } else {
-                    Text(shortcut.name)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Button("编辑") {
-                        url = shortcut.url
-                        isEditing = true
-                    }
-                    Button("删除") {
-                        removeShortcut()
+                Text(website.name)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("删除") {
+                    if let shortcut = shortcut {
+                        webShortcutManager.deleteShortcut(shortcut)
                     }
                 }
             } else {
-                if isEditing {
-                    TextField("输入网址", text: $url)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .onSubmit {
-                            addShortcut()
-                        }
-                } else {
-                    Button("添加") {
-                        isEditing = true
-                    }
+                Button("添加") {
+                    onAdd()
                 }
             }
         }
@@ -212,48 +213,120 @@ struct WebShortcutRow: View {
     
     private func loadIcon() {
         icon = nil
-        
-        guard let shortcut = shortcut else { return }
-        
-        Task {
-            await shortcut.fetchIcon { newIcon in
-                DispatchQueue.main.async {
-                    self.icon = newIcon
+        if let website = website {
+            Task {
+                await website.fetchIcon { fetchedIcon in
+                    DispatchQueue.main.async {
+                        self.icon = fetchedIcon
+                    }
                 }
             }
         }
     }
+}
+
+/**
+ * 网站选择器视图
+ */
+struct WebsiteSelectorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var websiteManager = WebsiteManager.shared
+    @State private var searchText = ""
+    let selectedKey: String
+    let onSelect: (Website) -> Void
     
-    private func addShortcut() {
-        guard !url.isEmpty else { return }
-        
-        let name = URL(string: url)?.host ?? url
-        let shortcut = WebShortcut(key: key, url: url, name: name)
-        webShortcutManager.shortcuts.append(shortcut)
-        webShortcutManager.saveShortcuts()
-        
-        isEditing = false
-        loadIcon()
-    }
-    
-    private func updateShortcut() {
-        guard !url.isEmpty else { return }
-        
-        let name = URL(string: url)?.host ?? url
-        let shortcut = WebShortcut(key: key, url: url, name: name)
-        
-        if let index = webShortcutManager.shortcuts.firstIndex(where: { $0.key == key }) {
-            webShortcutManager.shortcuts[index] = shortcut
-            webShortcutManager.saveShortcuts()
+    private var filteredWebsites: [Website] {
+        if searchText.isEmpty {
+            return websiteManager.websites.sorted { $0.name < $1.name }
         }
-        
-        isEditing = false
-        loadIcon()
+        return websiteManager.websites.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.url.localizedCaseInsensitiveContains(searchText)
+        }.sorted { $0.name < $1.name }
     }
     
-    private func removeShortcut() {
-        webShortcutManager.shortcuts.removeAll { $0.key == key }
-        webShortcutManager.saveShortcuts()
-        icon = nil
+    var body: some View {
+        VStack(spacing: 0) {
+            // 搜索框
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("搜索网站...", text: $searchText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding()
+            
+            Divider()
+            
+            // 网站列表
+            List(filteredWebsites) { website in
+                WebsiteSelectorRow(website: website) {
+                    onSelect(website)
+                }
+            }
+            .listStyle(InsetListStyle())
+        }
+        .frame(width: 400, height: 500)
+    }
+}
+
+/**
+ * 网站选择器行视图
+ */
+struct WebsiteSelectorRow: View {
+    let website: Website
+    let onSelect: () -> Void
+    @State private var icon: NSImage?
+    
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                // 网站图标
+                Group {
+                    if let icon = icon {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 24, height: 24)
+                    } else {
+                        Image(systemName: "globe")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 24, height: 24)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(width: 24)
+                
+                VStack(alignment: .leading) {
+                    Text(website.name)
+                        .font(.headline)
+                    Text(website.url)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .onAppear {
+            loadIcon()
+        }
+    }
+    
+    private func loadIcon() {
+        Task {
+            await website.fetchIcon { fetchedIcon in
+                DispatchQueue.main.async {
+                    self.icon = fetchedIcon
+                }
+            }
+        }
     }
 } 
