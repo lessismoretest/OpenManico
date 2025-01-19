@@ -152,7 +152,7 @@ class DockIconsWindowController {
             let hostingView = NSHostingView(rootView: view)
             
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 200, height: 100),
+                contentRect: .zero,  // 初始设置为零，后面会自动调整
                 styleMask: [.borderless],
                 backing: .buffered,
                 defer: false
@@ -165,13 +165,21 @@ class DockIconsWindowController {
             window.hasShadow = false
             window.collectionBehavior = [.canJoinAllSpaces, .stationary]
             
+            // 让窗口大小适应内容
+            hostingView.setFrameSize(hostingView.fittingSize)
+            window.setContentSize(hostingView.fittingSize)
+            
             self.window = window
         }
         
         if let window = window {
+            // 确保窗口已经调整到正确的大小
+            window.contentView?.layout()
+            window.setContentSize(window.contentView?.fittingSize ?? window.frame.size)
+            
             // 计算窗口位置（屏幕中央）
             if let screen = NSScreen.main {
-                let screenFrame = screen.frame
+                let screenFrame = screen.visibleFrame
                 let windowFrame = window.frame
                 let x = screenFrame.midX - windowFrame.width / 2
                 let y = screenFrame.midY - windowFrame.height / 2
