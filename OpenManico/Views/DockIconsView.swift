@@ -13,7 +13,6 @@ struct DockIconsView: View {
     @State private var selectedAppGroup: UUID? = nil
     @State private var selectedWebGroup: UUID? = nil
     @State private var isScanning = false
-    @State private var isShowingModeMenu = false
     
     private var switcherApps: [AppInfo] {
         let workspace = NSWorkspace.shared
@@ -89,8 +88,10 @@ struct DockIconsView: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(Color.blue)
                         )
-                        .frame(width: 150, height: 32)
                     }
+                    .menuStyle(BorderlessButtonMenuStyle())
+                    .menuIndicator(.hidden)
+                    .fixedSize()
                     
                     Divider()
                         .frame(height: 24)
