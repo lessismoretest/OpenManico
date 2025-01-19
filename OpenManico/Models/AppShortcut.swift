@@ -34,21 +34,18 @@ enum Theme: String, Codable {
 }
 
 enum AppDisplayMode: String, Codable {
-    case all = "all"
-    case running = "running"
-    case installed = "installed"
-    case switcher = "switcher"
+    case all = "all"              // 显示所有应用
+    case shortcutOnly = "shortcut" // 只显示设置了快捷键的应用
+    case runningOnly = "running"   // 只显示正在运行的应用
     
     var description: String {
         switch self {
         case .all:
-            return "显示所有快捷键应用"
-        case .running:
-            return "只显示已打开的快捷键应用"
-        case .installed:
-            return "显示所有已安装应用"
-        case .switcher:
-            return "显示应用切换器应用"
+            return "显示所有应用"
+        case .shortcutOnly:
+            return "只显示快捷键应用"
+        case .runningOnly:
+            return "只显示运行中应用"
         }
     }
 }
@@ -204,7 +201,7 @@ class AppSettings: ObservableObject {
             guard !isInitializing else { return }
             
             // 更新热键绑定
-            HotKeyManager.shared.updateShortcuts(shortcuts)
+            HotKeyManager.shared.updateShortcuts()
             
             // 如果不是在切换场景过程中，则更新当前场景
             if !isUpdatingScene {
@@ -216,28 +213,45 @@ class AppSettings: ObservableObject {
     @Published var launchAtLogin: Bool = false
     @Published var totalUsageCount: Int = 0
     @Published var showFloatingWindow: Bool = true
-    @Published var showWebShortcutsInFloatingWindow: Bool = false
-    @Published var openOnMouseHover: Bool = false
+    @Published var showWebShortcutsInFloatingWindow: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    @Published var openOnMouseHover: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
     @Published var selectedShortcutIndex: Int = -1
     @Published var selectedWebShortcutIndex: Int = -1
-    @Published var showWindowOnHover: Bool = false
-    @Published var openWebOnHover: Bool = false
-    @Published var showAllAppsInFloatingWindow: Bool = true
+    @Published var showWindowOnHover: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    @Published var openWebOnHover: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    @Published var showAllAppsInFloatingWindow: Bool = true {
+        didSet {
+            saveSettings()
+        }
+    }
+    @Published var scenes: [Scene] = []
+    @Published var currentScene: Scene?
     @Published var appDisplayMode: AppDisplayMode = .all {
         didSet {
             print("应用显示模式改变: \(oldValue) -> \(appDisplayMode)")
             saveSettings()
         }
     }
-    @Published var showSceneSwitcherInFloatingWindow: Bool = true
-    @Published var scenes: [Scene] = []
-    @Published var currentScene: Scene?
     @Published var websiteDisplayMode: WebsiteDisplayMode = .shortcutOnly {
         didSet {
             print("网站显示模式改变: \(oldValue) -> \(websiteDisplayMode)")
             saveSettings()
-            // 打印保存后的值，用于调试
-            print("保存后的网站显示模式: \(UserDefaults.standard.string(forKey: websiteDisplayModeKey) ?? "nil")")
         }
     }
     
@@ -322,12 +336,6 @@ class AppSettings: ObservableObject {
         }
     }
     
-    @Published var shortcutKeyFontSize: Double = 10 {
-        didSet {
-            saveSettings()
-        }
-    }
-    
     private let shortcutsKey = "AppShortcuts"
     private let themeKey = "AppTheme"
     private let launchAtLoginKey = "LaunchAtLogin"
@@ -338,7 +346,6 @@ class AppSettings: ObservableObject {
     private let showWindowOnHoverKey = "ShowWindowOnHover"
     private let openWebOnHoverKey = "OpenWebOnHover"
     private let showAllAppsInFloatingWindowKey = "ShowAllAppsInFloatingWindow"
-    private let showSceneSwitcherInFloatingWindowKey = "ShowSceneSwitcherInFloatingWindow"
     private let appDisplayModeKey = "AppDisplayMode"
     private let websiteDisplayModeKey = "WebsiteDisplayMode"
     private let iconSizeKey = "IconSize"
@@ -367,7 +374,6 @@ class AppSettings: ObservableObject {
     private let showWebsiteNameKey = "ShowWebsiteName"
     private let appNameFontSizeKey = "AppNameFontSize"
     private let websiteNameFontSizeKey = "WebsiteNameFontSize"
-    private let shortcutKeyFontSizeKey = "ShortcutKeyFontSize"
     
     private init() {
         isInitializing = true
@@ -450,7 +456,6 @@ class AppSettings: ObservableObject {
         showWindowOnHover = UserDefaults.standard.bool(forKey: showWindowOnHoverKey)
         openWebOnHover = UserDefaults.standard.bool(forKey: openWebOnHoverKey)
         showAllAppsInFloatingWindow = UserDefaults.standard.bool(forKey: showAllAppsInFloatingWindowKey)
-        showSceneSwitcherInFloatingWindow = UserDefaults.standard.bool(forKey: showSceneSwitcherInFloatingWindowKey)
         
         // 加载数值设置，如果没有则使用默认值
         iconSize = UserDefaults.standard.double(forKey: iconSizeKey)
@@ -567,12 +572,6 @@ class AppSettings: ObservableObject {
             UserDefaults.standard.set(10, forKey: websiteNameFontSizeKey)
         }
         
-        shortcutKeyFontSize = UserDefaults.standard.double(forKey: shortcutKeyFontSizeKey)
-        if !UserDefaults.standard.contains(key: shortcutKeyFontSizeKey) {
-            shortcutKeyFontSize = 10
-            UserDefaults.standard.set(10, forKey: shortcutKeyFontSizeKey)
-        }
-        
         // 确保所有默认值都被保存
         UserDefaults.standard.synchronize()
     }
@@ -604,7 +603,6 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(showWindowOnHover, forKey: showWindowOnHoverKey)
         UserDefaults.standard.set(openWebOnHover, forKey: openWebOnHoverKey)
         UserDefaults.standard.set(showAllAppsInFloatingWindow, forKey: showAllAppsInFloatingWindowKey)
-        UserDefaults.standard.set(showSceneSwitcherInFloatingWindow, forKey: showSceneSwitcherInFloatingWindowKey)
         UserDefaults.standard.set(appDisplayMode.rawValue, forKey: appDisplayModeKey)
         UserDefaults.standard.set(websiteDisplayMode.rawValue, forKey: websiteDisplayModeKey)
         UserDefaults.standard.set(iconSize, forKey: iconSizeKey)
@@ -637,7 +635,6 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(showWebsiteName, forKey: showWebsiteNameKey)
         UserDefaults.standard.set(appNameFontSize, forKey: appNameFontSizeKey)
         UserDefaults.standard.set(websiteNameFontSize, forKey: websiteNameFontSizeKey)
-        UserDefaults.standard.set(shortcutKeyFontSize, forKey: shortcutKeyFontSizeKey)
         
         // 立即同步所有设置
         UserDefaults.standard.synchronize()

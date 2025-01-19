@@ -225,13 +225,6 @@ struct FloatingWindowSettingsView: View {
                             }
                         }
                         
-                        HStack {
-                            Text("快捷键大小")
-                            Slider(value: $settings.shortcutKeyFontSize, in: 8...16, step: 1)
-                            Text("\(Int(settings.shortcutKeyFontSize))")
-                                .frame(width: 30)
-                        }
-                        
                         Divider()
                             .padding(.vertical, 4)
                         
@@ -260,13 +253,8 @@ struct FloatingWindowSettingsView: View {
                 
                 // 显示内容设置组
                 Section {
-                    Toggle("显示场景切换菜单", isOn: $settings.showSceneSwitcherInFloatingWindow)
-                        .onChange(of: settings.showSceneSwitcherInFloatingWindow) { _ in
-                            settings.saveSettings()
-                        }
-                    
                     Picker("应用显示模式", selection: $settings.appDisplayMode) {
-                        ForEach([AppDisplayMode.all, AppDisplayMode.running, AppDisplayMode.installed, AppDisplayMode.switcher], id: \.self) { mode in
+                        ForEach([AppDisplayMode.all, AppDisplayMode.shortcutOnly, AppDisplayMode.runningOnly], id: \.self) { mode in
                             Text(mode.description).tag(mode)
                         }
                     }
@@ -348,7 +336,7 @@ struct FloatingWindowSettingsView: View {
         .onDisappear {
             // 隐藏预览窗口，恢复原悬浮窗
             DockIconsWindowController.shared.hidePreviewWindow()
-            if settings.showFloatingWindow {
+            if settings.showFloatingWindow {	
                 DockIconsWindowController.shared.showWindow()
             }
         }

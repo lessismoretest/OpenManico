@@ -53,7 +53,7 @@ class HotKeyManager: ObservableObject {
         setupOptionKeyMonitor()
         setupTabKeyMonitor()
         print("HotKeyManager initialization completed")
-        updateShortcuts(AppSettings.shared.shortcuts)
+        updateShortcuts()
     }
     
     deinit {
@@ -199,7 +199,7 @@ class HotKeyManager: ObservableObject {
     
     private func handleHotKey(_ id: UInt32) {
         let number = Int(id)
-        print("Hotkey pressed: \(number)")
+        print("[HotKeyManager] 快捷键被按下: \(number)")
         
         DispatchQueue.main.async {
             // 将 ID 转换为对应的键
@@ -213,32 +213,57 @@ class HotKeyManager: ObservableObject {
                 key = String(UnicodeScalar(actualNumber - 10)!)
             }
             
+            print("[HotKeyManager] 转换后的按键: \(key)")
+            print("[HotKeyManager] 是否为网站快捷键: \(isWebShortcut)")
+            
             if isWebShortcut {
                 // 处理网站快捷键 (Option + Command)
-                if let shortcut = self.webShortcutManager.shortcuts.first(where: { $0.key == key && $0.isEnabled }),
-                   let url = URL(string: shortcut.url) {
-                    NSWorkspace.shared.open(url)
-                    AppSettings.shared.incrementUsageCount()
+                print("[HotKeyManager] 正在查找网站快捷键: \(key)")
+                print("[HotKeyManager] 当前场景: \(self.webShortcutManager.currentScene?.name ?? "无")")
+                print("[HotKeyManager] 当前场景中的快捷键:")
+                if let currentScene = self.webShortcutManager.currentScene {
+                    for shortcut in currentScene.shortcuts {
+                        print("- 键: \(shortcut.key), 名称: \(shortcut.name), URL: \(shortcut.url), 启用: \(shortcut.isEnabled)")
+                    }
+                }
+                
+                // 在当前场景的快捷键中查找匹配的快捷键
+                if let shortcut = self.webShortcutManager.currentScene?.shortcuts.first(where: { $0.key == key && $0.isEnabled }) {
+                    print("[HotKeyManager] ✅ 找到网站快捷键: \(shortcut.name)")
+                    print("[HotKeyManager] 网站 URL: \(shortcut.url)")
+                    print("[HotKeyManager] 网站 ID: \(shortcut.websiteId)")
+                    if let url = URL(string: shortcut.url) {
+                        print("[HotKeyManager] 正在打开网站: \(url)")
+                        NSWorkspace.shared.open(url)
+                        AppSettings.shared.incrementUsageCount()
+                    } else {
+                        print("[HotKeyManager] ❌ 无效的 URL: \(shortcut.url)")
+                    }
+                } else {
+                    print("[HotKeyManager] ❌ 未找到对应的网站快捷键")
+                    print("[HotKeyManager] 当前场景: \(self.webShortcutManager.currentScene?.name ?? "无")")
+                    print("[HotKeyManager] 场景中的快捷键数量: \(self.webShortcutManager.currentScene?.shortcuts.count ?? 0)")
                 }
             } else {
                 // 处理应用程序快捷键 (Option)
                 if let shortcut = AppSettings.shared.shortcuts.first(where: { $0.key == key }) {
-                    print("Found shortcut for key \(key): \(shortcut.appName)")
+                    print("[HotKeyManager] 找到应用快捷键: \(shortcut.appName)")
                     
                     if let currentApp = NSWorkspace.shared.frontmostApplication,
                        currentApp.bundleIdentifier == shortcut.bundleIdentifier {
                         if let lastApp = self.lastActiveApp {
-                            print("Switching back to previous app: \(lastApp.localizedName ?? "")")
+                            print("[HotKeyManager] 切换回上一个应用: \(lastApp.localizedName ?? "")")
                             self.switchToApp(bundleIdentifier: lastApp.bundleIdentifier ?? "")
                             AppSettings.shared.incrementUsageCount()
                         }
                     } else {
                         self.lastActiveApp = NSWorkspace.shared.frontmostApplication
+                        print("[HotKeyManager] 切换到应用: \(shortcut.appName)")
                         self.switchToApp(bundleIdentifier: shortcut.bundleIdentifier)
                         AppSettings.shared.incrementUsageCount()
                     }
                 } else {
-                    print("No shortcut found for key \(key)")
+                    print("[HotKeyManager] ❌ 未找到对应的应用快捷键")
                 }
             }
         }
@@ -336,16 +361,26 @@ class HotKeyManager: ObservableObject {
         }
     }
     
-    func updateShortcuts(_ newShortcuts: [AppShortcut]) {
+    func updateShortcuts() {
         print("Updating shortcuts...")
-        // 先解除所有现有的热键绑定
         unregisterAllHotKeys()
+        print("Registering all hot keys...")
         
-        // 更新快捷键列表
-        self.shortcuts = newShortcuts
+        // 注册数字键 (1-9)
+        for i in 1...9 {
+            if let keyCode = numberKeyCodes[i] {
+                print("Registering number key \(i)")
+                registerHotKey(id: i, keyCode: keyCode)
+            }
+        }
         
-        // 重新注册所有热键
-        registerAllHotKeys()
-        print("Shortcuts updated")
+        // 注册字母键 (A-Z)
+        for (letter, keyCode) in letterKeyCodes {
+            print("Registering letter key \(letter)")
+            let id = 10 + Int(UnicodeScalar(letter)!.value)
+            registerHotKey(id: id, keyCode: keyCode)
+        }
+        
+        print("All hot keys registered")
     }
 } 

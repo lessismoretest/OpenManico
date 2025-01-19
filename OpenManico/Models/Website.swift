@@ -8,9 +8,17 @@ struct Website: Identifiable, Codable, Hashable {
     /// 唯一标识符
     let id: UUID
     /// 网站URL
-    var url: String
+    var url: String {
+        didSet {
+            print("[Website] URL 已更新: \(url)")
+        }
+    }
     /// 网站名称
-    var name: String
+    var name: String {
+        didSet {
+            print("[Website] 名称已更新: \(name)")
+        }
+    }
     
     init(url: String, name: String) {
         self.url = url
@@ -34,6 +42,30 @@ struct Website: Identifiable, Codable, Hashable {
         let formatted = "\(part1)-\(part2)-\(part3)-\(part4)-\(part5)"
         self.id = UUID(uuidString: formatted) ?? UUID()
         print("[Website] 创建网站: \(name)")
+        print("[Website] - URL: \(url)")
+        print("[Website] - ID: \(id)")
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, url, name
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        url = try container.decode(String.self, forKey: .url)
+        name = try container.decode(String.self, forKey: .name)
+        print("[Website] 从数据解码网站: \(name)")
+        print("[Website] - URL: \(url)")
+        print("[Website] - ID: \(id)")
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(url, forKey: .url)
+        try container.encode(name, forKey: .name)
+        print("[Website] 编码网站: \(name)")
         print("[Website] - URL: \(url)")
         print("[Website] - ID: \(id)")
     }
@@ -127,12 +159,19 @@ class WebsiteManager: ObservableObject {
             do {
                 let websites = try JSONDecoder().decode([Website].self, from: data)
                 print("[WebsiteManager] 成功解码 \(websites.count) 个网站")
+                for website in websites {
+                    print("[WebsiteManager] - 加载网站: \(website.name)")
+                    print("[WebsiteManager] - URL: \(website.url)")
+                    print("[WebsiteManager] - ID: \(website.id)")
+                }
                 self.websites = websites
             } catch {
                 print("[WebsiteManager] ❌ 解码网站数据失败: \(error)")
+                print("[WebsiteManager] 错误详情: \(error.localizedDescription)")
             }
         } else {
             print("[WebsiteManager] UserDefaults 中没有找到网站数据")
+            print("[WebsiteManager] Key: \(websitesKey)")
         }
     }
     
@@ -151,6 +190,9 @@ class WebsiteManager: ObservableObject {
                 print("[WebsiteManager] 验证：保存的数据大小 \(savedData.count) 字节")
                 if let savedWebsites = try? JSONDecoder().decode([Website].self, from: savedData) {
                     print("[WebsiteManager] 验证：成功读取 \(savedWebsites.count) 个网站")
+                    for website in savedWebsites {
+                        print("[WebsiteManager] - 网站: \(website.name), URL: \(website.url)")
+                    }
                 }
             }
         } catch {
@@ -192,7 +234,17 @@ class WebsiteManager: ObservableObject {
     
     /// 根据 ID 查找网站
     func findWebsite(id: UUID) -> Website? {
+        print("[WebsiteManager] 正在查找网站，ID: \(id)")
+        print("[WebsiteManager] 当前所有网站:")
+        for website in websites {
+            print("- ID: \(website.id), 名称: \(website.name), URL: \(website.url)")
+        }
         let website = websites.first { $0.id == id }
+        if let website = website {
+            print("[WebsiteManager] ✅ 找到网站: \(website.name)")
+        } else {
+            print("[WebsiteManager] ❌ 未找到网站")
+        }
         return website
     }
 } 
