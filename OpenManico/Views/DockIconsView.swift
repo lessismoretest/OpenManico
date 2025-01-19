@@ -13,6 +13,7 @@ struct DockIconsView: View {
     @State private var selectedAppGroup: UUID? = nil
     @State private var selectedWebGroup: UUID? = nil
     @State private var isScanning = false
+    @State private var isShowingModeMenu = false
     
     private var switcherApps: [AppInfo] {
         let workspace = NSWorkspace.shared
@@ -45,77 +46,97 @@ struct DockIconsView: View {
             }
     }
     
+    private var groupedSwitcherApps: [AppInfo] {
+        guard let selectedGroupId = selectedAppGroup,
+              let selectedGroup = AppGroupManager.shared.groups.first(where: { $0.id == selectedGroupId }) else {
+            return switcherApps
+        }
+        
+        return switcherApps.filter { app in
+            selectedGroup.apps.contains(where: { $0.bundleId == app.bundleId })
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
-            // 顶部选择器
-            if settings.showSceneSwitcherInFloatingWindow {
-                if settings.appDisplayMode == .installed {
-                    // 分组横向显示
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            // 全部应用按钮
-                            Button(action: {}) {
-                                Text("全部")
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(selectedAppGroup == nil ? Color.blue : Color.gray.opacity(0.3))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .onHover { hovering in
-                                if hovering {
-                                    selectedAppGroup = nil
-                                }
-                            }
-                            
-                            // 分组按钮
-                            ForEach(AppGroupManager.shared.groups) { group in
-                                Button(action: {}) {
-                                    Text("\(group.name) (\(group.apps.count))")
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(selectedAppGroup == group.id ? Color.blue : Color.gray.opacity(0.3))
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                                .onHover { hovering in
-                                    if hovering {
-                                        selectedAppGroup = group.id
+            // 分组选择器
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    // 应用显示模式下拉菜单
+                    Menu {
+                        ForEach([AppDisplayMode.all, AppDisplayMode.running, AppDisplayMode.installed, AppDisplayMode.switcher], id: \.self) { mode in
+                            Button(action: {
+                                settings.appDisplayMode = mode
+                            }) {
+                                HStack {
+                                    Text(mode.description)
+                                    if settings.appDisplayMode == mode {
+                                        Image(systemName: "checkmark")
                                     }
                                 }
                             }
                         }
-                        .padding(.horizontal, 8)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(settings.appDisplayMode.description)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.blue)
+                        )
+                        .frame(width: 150, height: 32)
                     }
-                    .padding(.top, 8)
-                } else {
-                    // 原有的场景选择器
-                    HStack {
-                        Image(systemName: "app.badge")
+                    
+                    Divider()
+                        .frame(height: 24)
+                        .background(Color.white.opacity(0.3))
+                    
+                    // 全部应用按钮
+                    Button(action: {}) {
+                        Text("全部")
                             .foregroundColor(.white)
-                        
-                        let currentScene = settings.currentScene ?? settings.scenes.first ?? Scene(name: "默认场景", shortcuts: [])
-                        Picker("", selection: Binding(
-                            get: { currentScene },
-                            set: { settings.switchScene(to: $0) }
-                        )) {
-                            let scenes = settings.scenes.isEmpty ? [Scene(name: "默认场景", shortcuts: [])] : settings.scenes
-                            ForEach(scenes) { scene in
-                                Text(scene.name).tag(scene)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(selectedAppGroup == nil ? Color.blue : Color.gray.opacity(0.3))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { hovering in
+                        if hovering {
+                            selectedAppGroup = nil
+                        }
+                    }
+                    
+                    // 分组按钮
+                    ForEach(AppGroupManager.shared.groups) { group in
+                        Button(action: {}) {
+                            Text("\(group.name) (\(group.apps.count))")
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(selectedAppGroup == group.id ? Color.blue : Color.gray.opacity(0.3))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { hovering in
+                            if hovering {
+                                selectedAppGroup = group.id
                             }
                         }
-                        .pickerStyle(.menu)
-                        .frame(width: 120)
                     }
-                    .padding(.top, 8)
                 }
+                .padding(.horizontal, 8)
             }
+            .padding(.top, 8)
             
             // 应用图标列表
             if settings.appDisplayMode == .installed {
@@ -136,16 +157,25 @@ struct DockIconsView: View {
                     LazyVGrid(columns: [
                         GridItem(.adaptive(minimum: settings.appIconSize + 20), spacing: 16)
                     ], spacing: 16) {
-                        ForEach(switcherApps, id: \.bundleId) { app in
+                        ForEach(groupedSwitcherApps, id: \.bundleId) { app in
                             AppIconView(app: app)
+                                .onHover { hovering in
+                                    if hovering && settings.showWindowOnHover {
+                                        if let url = app.url {
+                                            NSWorkspace.shared.open(url)
+                                        }
+                                    }
+                                }
                         }
                     }
                     .padding()
                 }
             } else {
-                // 应用程序图标
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
+                // 显示快捷键应用
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.adaptive(minimum: settings.appIconSize + 20), spacing: 16)
+                    ], spacing: 16) {
                         let shortcuts = settings.currentScene?.shortcuts ?? []
                         let displayShortcuts = settings.appDisplayMode == .running
                             ? shortcuts.filter { shortcut in
@@ -195,7 +225,7 @@ struct DockIconsView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 8)
+                    .padding()
                 }
             }
             
@@ -204,74 +234,52 @@ struct DockIconsView: View {
                 Divider()
                     .background(Color.white.opacity(0.3))
                 
-                // 网站场景选择器
-                if settings.showSceneSwitcherInFloatingWindow {
-                    if settings.websiteDisplayMode == .shortcutOnly {
-                        // 显示场景选择器
-                        HStack {
-                            Image(systemName: "globe")
+                // 网站分组选择器
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        // 全部网站按钮
+                        Button(action: {}) {
+                            Text("全部")
                                 .foregroundColor(.white)
-                            Picker("", selection: Binding(
-                                get: { webShortcutManager.currentScene ?? webShortcutManager.scenes.first ?? WebScene(name: "默认场景", shortcuts: []) },
-                                set: { webShortcutManager.switchScene(to: $0) }
-                            )) {
-                                ForEach(webShortcutManager.scenes.isEmpty ? [WebScene(name: "默认场景", shortcuts: [])] : webShortcutManager.scenes) { scene in
-                                    Text(scene.name).tag(scene)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(selectedWebGroup == nil ? Color.blue : Color.gray.opacity(0.3))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { hovering in
+                            if hovering {
+                                selectedWebGroup = nil
+                            }
+                        }
+                        
+                        // 网站分组按钮
+                        ForEach(WebsiteGroupManager.shared.groups) { group in
+                            Button(action: {}) {
+                                Text("\(group.name) (\(group.websiteIds.count))")
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(selectedWebGroup == group.id ? Color.blue : Color.gray.opacity(0.3))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .onHover { hovering in
+                                if hovering {
+                                    selectedWebGroup = group.id
                                 }
                             }
-                            .pickerStyle(.menu)
-                            .frame(width: 120)
                         }
-                        .padding(.vertical, 8)
-                    } else {
-                        // 显示分组选择器
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                // 全部网站按钮
-                                Button(action: {}) {
-                                    Text("全部")
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(selectedWebGroup == nil ? Color.blue : Color.gray.opacity(0.3))
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                                .onHover { hovering in
-                                    if hovering {
-                                        selectedWebGroup = nil
-                                    }
-                                }
-                                
-                                // 分组按钮
-                                ForEach(WebsiteGroupManager.shared.groups) { group in
-                                    Button(action: {}) {
-                                        Text("\(group.name) (\(group.websiteIds.count))")
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 6)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .fill(selectedWebGroup == group.id ? Color.blue : Color.gray.opacity(0.3))
-                                            )
-                                    }
-                                    .buttonStyle(.plain)
-                                    .onHover { hovering in
-                                        if hovering {
-                                            selectedWebGroup = group.id
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 8)
-                        }
-                        .padding(.vertical, 8)
                     }
+                    .padding(.horizontal, 8)
                 }
+                .padding(.vertical, 8)
                 
-                // 网站快捷键图标
+                // 网站图标列表
                 ScrollView {
                     LazyVGrid(columns: [
                         GridItem(.adaptive(minimum: settings.webIconSize + 20), spacing: 16)
@@ -296,83 +304,72 @@ struct DockIconsView: View {
                         
                         ForEach(Array(displayShortcuts.enumerated()), id: \.element.id) { index, shortcut in
                             if !shortcut.key.isEmpty || settings.websiteDisplayMode == .all {
-                                VStack(spacing: 4) {
-                                    Group {
-                                        if let icon = webIcons[shortcut.websiteId] {
-                                            Image(nsImage: icon)
-                                                .resizable()
-                                                .frame(width: settings.webIconSize, height: settings.webIconSize)
-                                        } else {
-                                            Image(systemName: "globe")
-                                                .resizable()
-                                                .frame(width: settings.webIconSize, height: settings.webIconSize)
-                                                .foregroundColor(.white)
-                                                .onAppear {
-                                                    if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId) {
-                                                        Task {
-                                                            await website.fetchIcon { fetchedIcon in
-                                                                if let icon = fetchedIcon {
-                                                                    webIcons[shortcut.websiteId] = icon
-                                                                }
-                                                            }
-                                                        }
-                                                    }
+                                if let icon = webIcons[shortcut.websiteId] {
+                                    IconView(
+                                        icon: icon,
+                                        size: settings.webIconSize,
+                                        label: {
+                                            if !shortcut.key.isEmpty {
+                                                Text("⌘\(shortcut.key)")
+                                                    .font(.system(size: settings.shortcutKeyFontSize, weight: .medium))
+                                                    .foregroundColor(.white)
+                                            } else if settings.websiteDisplayMode == .all && settings.showWebsiteName {
+                                                if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId) {
+                                                    Text(website.name)
+                                                        .font(.system(size: settings.websiteNameFontSize))
+                                                        .foregroundColor(.white)
+                                                        .lineLimit(1)
+                                                        .frame(width: 60)
                                                 }
-                                        }
-                                    }
-                                    .cornerRadius(8)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(Color.white, lineWidth: settings.selectedWebShortcutIndex == index ? 2 : 0)
-                                    )
-                                    .onTapGesture {
-                                        if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId),
-                                           let url = URL(string: website.url) {
-                                            NSWorkspace.shared.open(url)
-                                            if !hotKeyManager.isOptionKeyPressed {
-                                                DockIconsWindowController.shared.hideWindow()
                                             }
-                                        }
-                                    }
-                                    .onHover { hovering in
-                                        if hovering {
-                                            settings.selectedWebShortcutIndex = index
-                                            if settings.openWebOnHover {
+                                        },
+                                        onHover: { hovering in
+                                            if hovering && settings.openWebOnHover {
                                                 if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId),
                                                    let url = URL(string: website.url) {
                                                     NSWorkspace.shared.open(url)
                                                 }
                                             }
-                                        } else if settings.selectedWebShortcutIndex == index {
-                                            settings.selectedWebShortcutIndex = -1
+                                        },
+                                        onTap: {
+                                            if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId),
+                                               let url = URL(string: website.url) {
+                                                NSWorkspace.shared.open(url)
+                                                if !hotKeyManager.isOptionKeyPressed {
+                                                    DockIconsWindowController.shared.hideWindow()
+                                                }
+                                            }
                                         }
-                                    }
-                                    .gesture(
-                                        DragGesture(minimumDistance: 0)
-                                            .onEnded { _ in
-                                                if settings.openOnMouseHover && settings.selectedWebShortcutIndex == index {
-                                                    if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId),
-                                                       let url = URL(string: website.url) {
-                                                        NSWorkspace.shared.open(url)
-                                                        if !hotKeyManager.isOptionKeyPressed {
-                                                            DockIconsWindowController.shared.hideWindow()
-                                                        }
+                                    )
+                                } else {
+                                    IconView(
+                                        icon: NSImage(systemSymbolName: "globe", accessibilityDescription: nil) ?? NSImage(),
+                                        size: settings.webIconSize,
+                                        label: {
+                                            if !shortcut.key.isEmpty {
+                                                Text("⌘\(shortcut.key)")
+                                                    .font(.system(size: settings.shortcutKeyFontSize, weight: .medium))
+                                                    .foregroundColor(.white)
+                                            } else if settings.websiteDisplayMode == .all && settings.showWebsiteName {
+                                                if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId) {
+                                                    Text(website.name)
+                                                        .font(.system(size: settings.websiteNameFontSize))
+                                                        .foregroundColor(.white)
+                                                        .lineLimit(1)
+                                                        .frame(width: 60)
+                                                }
+                                            }
+                                        }
+                                    )
+                                    .onAppear {
+                                        if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId) {
+                                            Task {
+                                                await website.fetchIcon { fetchedIcon in
+                                                    if let icon = fetchedIcon {
+                                                        webIcons[shortcut.websiteId] = icon
                                                     }
                                                 }
                                             }
-                                    )
-                                
-                                    if !shortcut.key.isEmpty {
-                                        Text("⌘\(shortcut.key)")
-                                            .font(.system(size: 10, weight: .medium))
-                                            .foregroundColor(.white)
-                                    } else if settings.websiteDisplayMode == .all {
-                                        if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId) {
-                                            Text(website.name)
-                                                .font(.system(size: 10))
-                                                .foregroundColor(.white)
-                                                .lineLimit(1)
-                                                .frame(width: 60)
                                         }
                                     }
                                 }
@@ -381,7 +378,6 @@ struct DockIconsView: View {
                     }
                     .padding(.horizontal, 8)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -489,34 +485,78 @@ struct DockIconsView: View {
     }
 }
 
-struct AppIconView: View {
-    let app: AppInfo
+struct IconView<Label: View>: View {
+    @StateObject private var settings = AppSettings.shared
+    let icon: NSImage
+    let size: CGFloat
+    let label: Label
+    let onHover: ((Bool) -> Void)?
+    let onTap: (() -> Void)?
     @State private var isHovering = false
     
+    init(
+        icon: NSImage,
+        size: CGFloat,
+        @ViewBuilder label: () -> Label,
+        onHover: ((Bool) -> Void)? = nil,
+        onTap: (() -> Void)? = nil
+    ) {
+        self.icon = icon
+        self.size = size
+        self.label = label()
+        self.onHover = onHover
+        self.onTap = onTap
+    }
+    
     var body: some View {
-        VStack {
-            Image(nsImage: app.icon)
+        VStack(spacing: settings.iconSpacing) {
+            Image(nsImage: icon)
                 .resizable()
-                .frame(width: AppSettings.shared.appIconSize, height: AppSettings.shared.appIconSize)
+                .frame(width: size, height: size)
+                .cornerRadius(settings.iconCornerRadius)
+                .overlay(
+                    RoundedRectangle(cornerRadius: settings.iconCornerRadius)
+                        .stroke(settings.iconBorderColor, lineWidth: isHovering ? settings.iconBorderWidth : 0)
+                )
+                .shadow(radius: settings.useIconShadow ? settings.iconShadowRadius : 0)
+                .scaleEffect(settings.useHoverAnimation && isHovering ? settings.hoverScale : 1.0)
+                .animation(.easeInOut(duration: settings.hoverAnimationDuration), value: isHovering)
                 .onTapGesture {
-                    if let url = app.url {
-                        NSWorkspace.shared.open(url)
-                    }
+                    onTap?()
                 }
-            Text(app.name)
-                .font(.caption)
-                .foregroundColor(.white)
-                .lineLimit(1)
-                .frame(width: 60)
+            
+            label
         }
         .onHover { hovering in
             isHovering = hovering
-            if hovering && AppSettings.shared.showWindowOnHover {
+            onHover?(hovering)
+        }
+    }
+}
+
+struct AppIconView: View {
+    @StateObject private var settings = AppSettings.shared
+    let app: AppInfo
+    
+    var body: some View {
+        IconView(
+            icon: app.icon,
+            size: AppSettings.shared.appIconSize,
+            label: {
+                if settings.showAppName {
+                    Text(app.name)
+                        .font(.system(size: settings.appNameFontSize))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .frame(width: 60)
+                }
+            },
+            onTap: {
                 if let url = app.url {
                     NSWorkspace.shared.open(url)
                 }
             }
-        }
+        )
     }
 }
 

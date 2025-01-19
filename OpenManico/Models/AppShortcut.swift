@@ -1,5 +1,6 @@
 import Foundation
 import ServiceManagement
+import SwiftUI
 
 struct AppShortcut: Identifiable, Codable, Equatable, Hashable {
     let id = UUID()
@@ -240,6 +241,93 @@ class AppSettings: ObservableObject {
         }
     }
     
+    // 图标样式设置
+    @Published var iconCornerRadius: Double = 8 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var iconBorderWidth: Double = 2 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var iconBorderColor: Color = .white {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var iconSpacing: Double = 4 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var iconShadowRadius: Double = 0 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var useIconShadow: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    // 图标悬停动画设置
+    @Published var useHoverAnimation: Bool = true {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var hoverScale: Double = 1.1 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var hoverAnimationDuration: Double = 0.2 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    // 图标标签设置
+    @Published var showAppName: Bool = true {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var showWebsiteName: Bool = true {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var appNameFontSize: Double = 10 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var websiteNameFontSize: Double = 10 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var shortcutKeyFontSize: Double = 10 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
     private let shortcutsKey = "AppShortcuts"
     private let themeKey = "AppTheme"
     private let launchAtLoginKey = "LaunchAtLogin"
@@ -266,6 +354,20 @@ class AppSettings: ObservableObject {
     private let floatingWindowXKey = "FloatingWindowX"
     private let floatingWindowYKey = "FloatingWindowY"
     private let windowPositionKey = "WindowPosition"
+    private let iconCornerRadiusKey = "IconCornerRadius"
+    private let iconBorderWidthKey = "IconBorderWidth"
+    private let iconBorderColorKey = "IconBorderColor"
+    private let iconSpacingKey = "IconSpacing"
+    private let iconShadowRadiusKey = "IconShadowRadius"
+    private let useIconShadowKey = "UseIconShadow"
+    private let useHoverAnimationKey = "UseHoverAnimation"
+    private let hoverScaleKey = "HoverScale"
+    private let hoverAnimationDurationKey = "HoverAnimationDuration"
+    private let showAppNameKey = "ShowAppName"
+    private let showWebsiteNameKey = "ShowWebsiteName"
+    private let appNameFontSizeKey = "AppNameFontSize"
+    private let websiteNameFontSizeKey = "WebsiteNameFontSize"
+    private let shortcutKeyFontSizeKey = "ShortcutKeyFontSize"
     
     private init() {
         isInitializing = true
@@ -402,6 +504,75 @@ class AppSettings: ObservableObject {
             windowPosition = position
         }
         
+        // 加载图标样式设置
+        iconCornerRadius = UserDefaults.standard.double(forKey: iconCornerRadiusKey)
+        if !UserDefaults.standard.contains(key: iconCornerRadiusKey) {
+            iconCornerRadius = 8
+            UserDefaults.standard.set(8, forKey: iconCornerRadiusKey)
+        }
+        
+        iconBorderWidth = UserDefaults.standard.double(forKey: iconBorderWidthKey)
+        if !UserDefaults.standard.contains(key: iconBorderWidthKey) {
+            iconBorderWidth = 2
+            UserDefaults.standard.set(2, forKey: iconBorderWidthKey)
+        }
+        
+        if let colorData = UserDefaults.standard.data(forKey: iconBorderColorKey),
+           let color = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
+            iconBorderColor = Color(nsColor: color)
+        }
+        
+        iconSpacing = UserDefaults.standard.double(forKey: iconSpacingKey)
+        if !UserDefaults.standard.contains(key: iconSpacingKey) {
+            iconSpacing = 4
+            UserDefaults.standard.set(4, forKey: iconSpacingKey)
+        }
+        
+        iconShadowRadius = UserDefaults.standard.double(forKey: iconShadowRadiusKey)
+        if !UserDefaults.standard.contains(key: iconShadowRadiusKey) {
+            iconShadowRadius = 0
+            UserDefaults.standard.set(0, forKey: iconShadowRadiusKey)
+        }
+        
+        useIconShadow = UserDefaults.standard.bool(forKey: useIconShadowKey)
+        
+        // 加载图标悬停动画设置
+        useHoverAnimation = UserDefaults.standard.bool(forKey: useHoverAnimationKey)
+        
+        hoverScale = UserDefaults.standard.double(forKey: hoverScaleKey)
+        if !UserDefaults.standard.contains(key: hoverScaleKey) {
+            hoverScale = 1.1
+            UserDefaults.standard.set(1.1, forKey: hoverScaleKey)
+        }
+        
+        hoverAnimationDuration = UserDefaults.standard.double(forKey: hoverAnimationDurationKey)
+        if !UserDefaults.standard.contains(key: hoverAnimationDurationKey) {
+            hoverAnimationDuration = 0.2
+            UserDefaults.standard.set(0.2, forKey: hoverAnimationDurationKey)
+        }
+        
+        // 加载图标标签设置
+        showAppName = UserDefaults.standard.bool(forKey: showAppNameKey)
+        showWebsiteName = UserDefaults.standard.bool(forKey: showWebsiteNameKey)
+        
+        appNameFontSize = UserDefaults.standard.double(forKey: appNameFontSizeKey)
+        if !UserDefaults.standard.contains(key: appNameFontSizeKey) {
+            appNameFontSize = 10
+            UserDefaults.standard.set(10, forKey: appNameFontSizeKey)
+        }
+        
+        websiteNameFontSize = UserDefaults.standard.double(forKey: websiteNameFontSizeKey)
+        if !UserDefaults.standard.contains(key: websiteNameFontSizeKey) {
+            websiteNameFontSize = 10
+            UserDefaults.standard.set(10, forKey: websiteNameFontSizeKey)
+        }
+        
+        shortcutKeyFontSize = UserDefaults.standard.double(forKey: shortcutKeyFontSizeKey)
+        if !UserDefaults.standard.contains(key: shortcutKeyFontSizeKey) {
+            shortcutKeyFontSize = 10
+            UserDefaults.standard.set(10, forKey: shortcutKeyFontSizeKey)
+        }
+        
         // 确保所有默认值都被保存
         UserDefaults.standard.synchronize()
     }
@@ -447,6 +618,26 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(floatingWindowX, forKey: floatingWindowXKey)
         UserDefaults.standard.set(floatingWindowY, forKey: floatingWindowYKey)
         UserDefaults.standard.set(windowPosition.rawValue, forKey: windowPositionKey)
+        UserDefaults.standard.set(iconCornerRadius, forKey: iconCornerRadiusKey)
+        UserDefaults.standard.set(iconBorderWidth, forKey: iconBorderWidthKey)
+        if let colorData = try? NSKeyedArchiver.archivedData(withRootObject: NSColor(iconBorderColor), requiringSecureCoding: false) {
+            UserDefaults.standard.set(colorData, forKey: iconBorderColorKey)
+        }
+        UserDefaults.standard.set(iconSpacing, forKey: iconSpacingKey)
+        UserDefaults.standard.set(iconShadowRadius, forKey: iconShadowRadiusKey)
+        UserDefaults.standard.set(useIconShadow, forKey: useIconShadowKey)
+        
+        // 保存图标悬停动画设置
+        UserDefaults.standard.set(useHoverAnimation, forKey: useHoverAnimationKey)
+        UserDefaults.standard.set(hoverScale, forKey: hoverScaleKey)
+        UserDefaults.standard.set(hoverAnimationDuration, forKey: hoverAnimationDurationKey)
+        
+        // 保存图标标签设置
+        UserDefaults.standard.set(showAppName, forKey: showAppNameKey)
+        UserDefaults.standard.set(showWebsiteName, forKey: showWebsiteNameKey)
+        UserDefaults.standard.set(appNameFontSize, forKey: appNameFontSizeKey)
+        UserDefaults.standard.set(websiteNameFontSize, forKey: websiteNameFontSizeKey)
+        UserDefaults.standard.set(shortcutKeyFontSize, forKey: shortcutKeyFontSizeKey)
         
         // 立即同步所有设置
         UserDefaults.standard.synchronize()

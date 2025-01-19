@@ -155,6 +155,105 @@ struct FloatingWindowSettingsView: View {
                             }
                         }
                     }
+                    
+                    // 图标样式设置
+                    Group {
+                        Text("图标样式")
+                            .font(.headline)
+                            .padding(.top, 8)
+                        
+                        HStack {
+                            Text("圆角半径")
+                            Slider(value: $settings.iconCornerRadius, in: 0...16, step: 1)
+                            Text("\(Int(settings.iconCornerRadius))")
+                                .frame(width: 30)
+                        }
+                        
+                        HStack {
+                            Text("边框宽度")
+                            Slider(value: $settings.iconBorderWidth, in: 0...4, step: 0.5)
+                            Text(String(format: "%.1f", settings.iconBorderWidth))
+                                .frame(width: 30)
+                        }
+                        
+                        ColorPicker("边框颜色", selection: $settings.iconBorderColor)
+                        
+                        HStack {
+                            Text("图标间距")
+                            Slider(value: $settings.iconSpacing, in: 0...16, step: 1)
+                            Text("\(Int(settings.iconSpacing))")
+                                .frame(width: 30)
+                        }
+                        
+                        Toggle("启用阴影", isOn: $settings.useIconShadow)
+                        
+                        if settings.useIconShadow {
+                            HStack {
+                                Text("阴影半径")
+                                Slider(value: $settings.iconShadowRadius, in: 0...10, step: 0.5)
+                                Text(String(format: "%.1f", settings.iconShadowRadius))
+                                    .frame(width: 30)
+                            }
+                        }
+                        
+                        Divider()
+                            .padding(.vertical, 4)
+                        
+                        // 图标标签设置
+                        Text("图标标签")
+                            .font(.headline)
+                            .padding(.top, 8)
+                        
+                        Toggle("显示应用名称", isOn: $settings.showAppName)
+                        Toggle("显示网站名称", isOn: $settings.showWebsiteName)
+                        
+                        if settings.showAppName {
+                            HStack {
+                                Text("应用名称大小")
+                                Slider(value: $settings.appNameFontSize, in: 8...16, step: 1)
+                                Text("\(Int(settings.appNameFontSize))")
+                                    .frame(width: 30)
+                            }
+                        }
+                        
+                        if settings.showWebsiteName {
+                            HStack {
+                                Text("网站名称大小")
+                                Slider(value: $settings.websiteNameFontSize, in: 8...16, step: 1)
+                                Text("\(Int(settings.websiteNameFontSize))")
+                                    .frame(width: 30)
+                            }
+                        }
+                        
+                        HStack {
+                            Text("快捷键大小")
+                            Slider(value: $settings.shortcutKeyFontSize, in: 8...16, step: 1)
+                            Text("\(Int(settings.shortcutKeyFontSize))")
+                                .frame(width: 30)
+                        }
+                        
+                        Divider()
+                            .padding(.vertical, 4)
+                        
+                        // 图标悬停动画设置
+                        Toggle("启用悬停动画", isOn: $settings.useHoverAnimation)
+                        
+                        if settings.useHoverAnimation {
+                            HStack {
+                                Text("放大倍数")
+                                Slider(value: $settings.hoverScale, in: 1.0...1.5, step: 0.05)
+                                Text(String(format: "%.2f", settings.hoverScale))
+                                    .frame(width: 40)
+                            }
+                            
+                            HStack {
+                                Text("动画时长")
+                                Slider(value: $settings.hoverAnimationDuration, in: 0.1...0.5, step: 0.05)
+                                Text(String(format: "%.2f", settings.hoverAnimationDuration))
+                                    .frame(width: 40)
+                            }
+                        }
+                    }
                 } header: {
                     Text("外观设置")
                 }
