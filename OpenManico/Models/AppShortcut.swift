@@ -97,6 +97,7 @@ class AppSettings: ObservableObject {
     @Published var openWebOnHover: Bool = false
     @Published var showAllAppsInFloatingWindow: Bool = true
     @Published var appDisplayMode: AppDisplayMode = .all
+    @Published var showSceneSwitcherInFloatingWindow: Bool = true
     @Published var scenes: [Scene] = []
     @Published var currentScene: Scene?
     
@@ -110,6 +111,7 @@ class AppSettings: ObservableObject {
     private let showWindowOnHoverKey = "ShowWindowOnHover"
     private let openWebOnHoverKey = "OpenWebOnHover"
     private let showAllAppsInFloatingWindowKey = "ShowAllAppsInFloatingWindow"
+    private let showSceneSwitcherInFloatingWindowKey = "ShowSceneSwitcherInFloatingWindow"
     private let appDisplayModeKey = "AppDisplayMode"
     
     private init() {
@@ -173,6 +175,7 @@ class AppSettings: ObservableObject {
            let mode = AppDisplayMode(rawValue: modeString) {
             appDisplayMode = mode
         }
+        showSceneSwitcherInFloatingWindow = UserDefaults.standard.bool(forKey: showSceneSwitcherInFloatingWindowKey)
     }
     
     func saveSettings() {
@@ -193,6 +196,7 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(showWindowOnHover, forKey: showWindowOnHoverKey)
         UserDefaults.standard.set(openWebOnHover, forKey: openWebOnHoverKey)
         UserDefaults.standard.set(showAllAppsInFloatingWindow, forKey: showAllAppsInFloatingWindowKey)
+        UserDefaults.standard.set(showSceneSwitcherInFloatingWindow, forKey: showSceneSwitcherInFloatingWindowKey)
         UserDefaults.standard.set(appDisplayMode.rawValue, forKey: appDisplayModeKey)
     }
     

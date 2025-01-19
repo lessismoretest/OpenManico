@@ -235,30 +235,35 @@ class WebShortcutManager: ObservableObject {
     
     func switchScene(to scene: WebScene) {
         isUpdatingScene = true
-        defer { isUpdatingScene = false }
         
         // 深拷贝场景的快捷键
         if let data = try? JSONEncoder().encode(scene.shortcuts),
            let copiedShortcuts = try? JSONDecoder().decode([WebShortcut].self, from: data) {
             
-            // 创建新的场景对象
-            let newScene = WebScene(id: scene.id, name: scene.name, shortcuts: copiedShortcuts)
-            
-            // 更新当前场景引用
-            currentScene = newScene
-            
-            // 更新scenes数组中的对应场景
-            if let index = scenes.firstIndex(where: { $0.id == scene.id }) {
-                scenes[index] = newScene
+            DispatchQueue.main.async {
+                // 创建新的场景对象
+                let newScene = WebScene(id: scene.id, name: scene.name, shortcuts: copiedShortcuts)
+                
+                // 更新当前场景引用
+                self.currentScene = newScene
+                
+                // 更新scenes数组中的对应场景
+                if let index = self.scenes.firstIndex(where: { $0.id == scene.id }) {
+                    self.scenes[index] = newScene
+                }
+                
+                // 更新快捷键列表
+                self.shortcuts = copiedShortcuts
+                
+                // 保存设置
+                self.saveShortcuts()
+                
+                print("Switched to web scene: \(scene.name) with \(copiedShortcuts.count) shortcuts")
+                
+                self.isUpdatingScene = false
             }
-            
-            // 更新快捷键列表
-            shortcuts = copiedShortcuts
-            
-            // 保存设置
-            saveShortcuts()
-            
-            print("Switched to web scene: \(scene.name) with \(copiedShortcuts.count) shortcuts")
+        } else {
+            isUpdatingScene = false
         }
     }
     

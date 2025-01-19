@@ -6,10 +6,30 @@ import SwiftUI
 struct DockIconsView: View {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var hotKeyManager = HotKeyManager.shared
+    @StateObject private var webShortcutManager = HotKeyManager.shared.webShortcutManager
     @State private var webIcons: [String: NSImage] = [:]
     
     var body: some View {
         VStack(spacing: 16) {
+            // 应用场景选择器
+            if settings.showSceneSwitcherInFloatingWindow {
+                HStack {
+                    Image(systemName: "app.badge")
+                        .foregroundColor(.white)
+                    Picker("", selection: Binding(
+                        get: { settings.currentScene ?? settings.scenes.first ?? Scene(name: "默认场景", shortcuts: []) },
+                        set: { settings.switchScene(to: $0) }
+                    )) {
+                        ForEach(settings.scenes.isEmpty ? [Scene(name: "默认场景", shortcuts: [])] : settings.scenes) { scene in
+                            Text(scene.name).tag(scene)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 120)
+                }
+                .padding(.top, 8)
+            }
+            
             // 应用程序图标
             HStack(spacing: 12) {
                 ForEach(Array(settings.shortcuts.sorted(by: { $0.key < $1.key }).enumerated()), id: \.element.id) { index, shortcut in
@@ -67,12 +87,32 @@ struct DockIconsView: View {
             }
             
             // 网站快捷键图标
-            if settings.showWebShortcutsInFloatingWindow && !hotKeyManager.webShortcutManager.shortcuts.isEmpty {
+            if settings.showWebShortcutsInFloatingWindow {
                 Divider()
                     .background(Color.white.opacity(0.3))
                 
+                // 网站场景选择器
+                if settings.showSceneSwitcherInFloatingWindow {
+                    HStack {
+                        Image(systemName: "globe")
+                            .foregroundColor(.white)
+                        Picker("", selection: Binding(
+                            get: { webShortcutManager.currentScene ?? webShortcutManager.scenes.first ?? WebScene(name: "默认场景", shortcuts: []) },
+                            set: { webShortcutManager.switchScene(to: $0) }
+                        )) {
+                            ForEach(webShortcutManager.scenes.isEmpty ? [WebScene(name: "默认场景", shortcuts: [])] : webShortcutManager.scenes) { scene in
+                                Text(scene.name).tag(scene)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 120)
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                // 网站快捷键图标
                 HStack(spacing: 12) {
-                    ForEach(Array(hotKeyManager.webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key }).enumerated()), id: \.element.id) { index, shortcut in
+                    ForEach(Array(webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key }).enumerated()), id: \.element.id) { index, shortcut in
                         VStack(spacing: 4) {
                             Group {
                                 if let icon = webIcons[shortcut.key] {

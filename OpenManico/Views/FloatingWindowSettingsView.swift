@@ -15,6 +15,11 @@ struct FloatingWindowSettingsView: View {
                     }
                 
                 if settings.showFloatingWindow {
+                    Toggle("显示场景切换菜单", isOn: $settings.showSceneSwitcherInFloatingWindow)
+                        .onChange(of: settings.showSceneSwitcherInFloatingWindow) { _ in
+                            settings.saveSettings()
+                        }
+                    
                     Picker("应用显示设置", selection: $settings.appDisplayMode) {
                         ForEach([AppDisplayMode.all, AppDisplayMode.running], id: \.self) { mode in
                             Text(mode.description).tag(mode)

@@ -17,10 +17,10 @@ struct WebShortcutsView: View {
             // 场景选择器
             HStack {
                 Picker("场景", selection: Binding(
-                    get: { webShortcutManager.currentScene ?? webShortcutManager.scenes.first ?? WebScene(name: "", shortcuts: []) },
+                    get: { webShortcutManager.currentScene ?? webShortcutManager.scenes.first ?? WebScene(name: "默认场景", shortcuts: []) },
                     set: { webShortcutManager.switchScene(to: $0) }
                 )) {
-                    ForEach(webShortcutManager.scenes) { scene in
+                    ForEach(webShortcutManager.scenes.isEmpty ? [WebScene(name: "默认场景", shortcuts: [])] : webShortcutManager.scenes) { scene in
                         Text(scene.name).tag(scene)
                     }
                 }
