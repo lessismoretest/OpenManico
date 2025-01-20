@@ -34,99 +34,95 @@ struct AppListView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 分组列表
-            if !groupManager.groups.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        // 全部应用按钮
-                        Button(action: { selectedGroup = nil }) {
-                            Text("全部")
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedGroup == nil ? Color.blue : Color.gray.opacity(0.3))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        
-                        // 分组按钮
-                        ForEach(groupManager.groups) { group in
-                            HStack {
+            // 操作区
+            VStack(spacing: 12) {
+                // 分组列表
+                if !groupManager.groups.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            // 全部应用按钮
+                            Button(action: { selectedGroup = nil }) {
+                                Text("全部")
+                                    .foregroundColor(.primary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(selectedGroup == nil ? Color.accentColor : Color(NSColor.controlBackgroundColor))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            
+                            // 分组按钮
+                            ForEach(groupManager.groups) { group in
                                 Button(action: { selectedGroup = group }) {
                                     Text("\(group.name) (\(group.apps.count))")
-                                        .foregroundColor(.white)
+                                        .foregroundColor(.primary)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 6)
                                         .background(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .fill(selectedGroup?.id == group.id ? Color.blue : Color.gray.opacity(0.3))
+                                                .fill(selectedGroup?.id == group.id ? Color.accentColor : Color(NSColor.controlBackgroundColor))
                                         )
                                 }
                                 .buttonStyle(.plain)
-                                
-                                // 编辑分组按钮
-                                if selectedGroup?.id == group.id {
-                                    Button(action: {
-                                        selectedGroup = group
-                                        newGroupName = group.name
-                                        showingGroupSheet = true
-                                    }) {
-                                        Image(systemName: "pencil")
-                                            .foregroundColor(.white)
-                                    }
-                                    .buttonStyle(.plain)
-                                    
-                                    Button(action: {
-                                        groupManager.deleteGroup(group)
-                                        selectedGroup = nil
-                                    }) {
-                                        Image(systemName: "trash")
-                                            .foregroundColor(.white)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
                             }
                         }
-                        
-                        // 添加分组按钮
-                        Button(action: { showingNewGroupSheet = true }) {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.blue)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 16)
-                }
-                .padding(.vertical, 8)
-            }
-            
-            // 搜索框和刷新按钮
-            HStack {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    TextField("搜索应用...", text: $searchText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, 16)
                     }
                 }
                 
-                Button(action: scanApps) {
-                    Image(systemName: "arrow.clockwise")
-                        .rotationEffect(.degrees(isScanning ? 360 : 0))
-                        .animation(isScanning ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isScanning)
+                // 搜索框和刷新按钮
+                HStack {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                        TextField("搜索应用...", text: $searchText)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    
+                    Button(action: scanApps) {
+                        Image(systemName: "arrow.clockwise")
+                            .rotationEffect(.degrees(isScanning ? 360 : 0))
+                            .animation(isScanning ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: isScanning)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isScanning)
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(isScanning)
+                .padding(.horizontal)
+                
+                // 分组操作按钮
+                HStack {
+                    if !selectedApps.isEmpty {
+                        if let group = selectedGroup {
+                            Button("从分组移除") {
+                                removeSelectedAppsFromGroup(group)
+                            }
+                        } else {
+                            Button("添加到分组") {
+                                showingGroupSheet = true
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    if selectedGroup == nil {
+                        Button(action: { showingNewGroupSheet = true }) {
+                            Image(systemName: "folder.badge.plus")
+                        }
+                    }
+                }
+                .padding(.horizontal)
             }
-            .padding()
+            .padding(.vertical, 8)
             
             Divider()
             
@@ -146,7 +142,7 @@ struct AppListView: View {
         }
         .sheet(isPresented: $showingGroupSheet) {
             VStack(spacing: 20) {
-                Text("重命名分组")
+                Text("创建应用分组")
                     .font(.headline)
                 
                 TextField("分组名称", text: $newGroupName)
@@ -159,41 +155,10 @@ struct AppListView: View {
                         newGroupName = ""
                     }
                     
-                    Button("保存") {
-                        if !newGroupName.isEmpty {
-                            if let group = selectedGroup {
-                                renameGroup(group: group, to: newGroupName)
-                            }
-                            showingGroupSheet = false
-                            newGroupName = ""
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(newGroupName.isEmpty)
-                }
-            }
-            .padding()
-            .frame(width: 300, height: 150)
-        }
-        .sheet(isPresented: $showingNewGroupSheet) {
-            VStack(spacing: 20) {
-                Text("创建应用分组")
-                    .font(.headline)
-                
-                TextField("分组名称", text: $newGroupName)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .frame(width: 200)
-                
-                HStack {
-                    Button("取消") {
-                        showingNewGroupSheet = false
-                        newGroupName = ""
-                    }
-                    
                     Button("创建") {
                         if !newGroupName.isEmpty {
-                            groupManager.createGroup(name: newGroupName, apps: [])
-                            showingNewGroupSheet = false
+                            createGroup(name: newGroupName)
+                            showingGroupSheet = false
                             newGroupName = ""
                         }
                     }
@@ -372,7 +337,7 @@ struct AppRow: View {
         .padding(.vertical, 4)
         .sheet(isPresented: $showingNewGroupSheet) {
             VStack(spacing: 20) {
-                Text("创建应用分组")
+                Text("创建新分组")
                     .font(.headline)
                 
                 TextField("分组名称", text: $newGroupName)
@@ -387,7 +352,7 @@ struct AppRow: View {
                     
                     Button("创建") {
                         if !newGroupName.isEmpty {
-                            groupManager.createGroup(name: newGroupName, apps: [])
+                            groupManager.createGroupWithApp(name: newGroupName, app: app)
                             showingNewGroupSheet = false
                             newGroupName = ""
                         }

@@ -4,95 +4,126 @@ import AppKit
 /**
  * 网站模型
  */
-struct Website: Identifiable, Codable {
+struct Website: Identifiable, Codable, Hashable {
+    /// 唯一标识符
     let id: UUID
-    var url: String
-    var name: String
-    
-    // 并发控制
-    private static let semaphore = DispatchSemaphore(value: 3) // 最多同时加载3个图标
-    private static var loadingQueue = Set<String>() // 正在加载的URL集合
-    private static let queueLock = NSLock() // 用于保护loadingQueue的锁
-    
-    init(id: UUID = UUID(), url: String, name: String) {
-        self.id = id
-        self.url = url
-        self.name = name
+    /// 网站URL
+    var url: String {
+        didSet {
+            print("[Website] URL 已更新: \(url)")
+        }
+    }
+    /// 网站名称
+    var name: String {
+        didSet {
+            print("[Website] 名称已更新: \(name)")
+        }
     }
     
-    func fetchIcon(completion: @escaping (NSImage?) -> Void) async {
-        // 检查是否正在加载
-        Website.queueLock.lock()
-        if Website.loadingQueue.contains(url) {
-            Website.queueLock.unlock()
-            return
-        }
-        Website.loadingQueue.insert(url)
-        Website.queueLock.unlock()
+    init(url: String, name: String) {
+        self.url = url
+        self.name = name
+        // 使用 URL 生成固定的 UUID
+        let urlData = url.data(using: .utf8) ?? Data()
+        let hash = urlData.map { String(format: "%02x", $0) }.joined()
+        let uuidString = hash.prefix(32)
+        let index1 = uuidString.index(uuidString.startIndex, offsetBy: 8)
+        let index2 = uuidString.index(uuidString.startIndex, offsetBy: 12)
+        let index3 = uuidString.index(uuidString.startIndex, offsetBy: 16)
+        let index4 = uuidString.index(uuidString.startIndex, offsetBy: 20)
+        let index5 = uuidString.index(uuidString.startIndex, offsetBy: 32)
         
-        defer {
-            Website.queueLock.lock()
-            Website.loadingQueue.remove(url)
-            Website.queueLock.unlock()
-        }
+        let part1 = uuidString[..<index1]
+        let part2 = uuidString[index1..<index2]
+        let part3 = uuidString[index2..<index3]
+        let part4 = uuidString[index3..<index4]
+        let part5 = uuidString[index4..<uuidString.index(uuidString.startIndex, offsetBy: min(32, uuidString.count))]
         
-        // 使用信号量限制并发
-        Website.semaphore.wait()
-        defer { Website.semaphore.signal() }
-        
-        guard let url = URL(string: self.url) else {
+        let formatted = "\(part1)-\(part2)-\(part3)-\(part4)-\(part5)"
+        self.id = UUID(uuidString: formatted) ?? UUID()
+        print("[Website] 创建网站: \(name)")
+        print("[Website] - URL: \(url)")
+        print("[Website] - ID: \(id)")
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, url, name
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        url = try container.decode(String.self, forKey: .url)
+        name = try container.decode(String.self, forKey: .name)
+        print("[Website] 从数据解码网站: \(name)")
+        print("[Website] - URL: \(url)")
+        print("[Website] - ID: \(id)")
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(url, forKey: .url)
+        try container.encode(name, forKey: .name)
+        print("[Website] 编码网站: \(name)")
+        print("[Website] - URL: \(url)")
+        print("[Website] - ID: \(id)")
+    }
+    
+    /// 获取网站图标
+    func fetchIcon(completion: @escaping (NSImage?) -> Void) {
+        guard let url = URL(string: self.url),
+              let host = url.host else {
             completion(nil)
             return
         }
         
-        let startTime = Date()
+        // 首先尝试从网站直接获取 favicon
+        let faviconURL = "\(url.scheme ?? "https")://\(host)/favicon.ico"
+        guard let faviconRequestURL = URL(string: faviconURL) else {
+            completion(nil)
+            return
+        }
         
-        // 创建带超时的 URLSession 配置
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 5 // 5秒超时
-        let session = URLSession(configuration: config)
+        // 创建一个高优先级的队列来处理图标获取
+        let queue = DispatchQueue(label: "com.openmanico.favicon", qos: .userInitiated)
         
-        // 尝试从网站根目录获取 favicon.ico
-        if let faviconURL = URL(string: "\(url.scheme ?? "https")://\(url.host ?? "")/favicon.ico") {
-            do {
-                let (data, _) = try await session.data(from: faviconURL)
-                if let image = NSImage(data: data) {
-                    await WebIconManager.shared.setIcon(image, for: self.id)
-                    completion(image)
-                    return
+        queue.async {
+            let directFaviconTask = URLSession.shared.dataTask(with: faviconRequestURL) { data, response, error in
+                if let data = data,
+                   let image = NSImage(data: data),
+                   image.size.width > 0 { // 验证图片是否有效
+                    DispatchQueue.main.async {
+                        completion(image)
+                    }
+                } else {
+                    // 如果直接获取失败，尝试从 Google 获取
+                    let googleFaviconURL = "https://www.google.com/s2/favicons?domain=\(host)&sz=64"
+                    guard let googleURL = URL(string: googleFaviconURL) else {
+                        DispatchQueue.main.async {
+                            completion(nil)
+                        }
+                        return
+                    }
+                    
+                    let googleFaviconTask = URLSession.shared.dataTask(with: googleURL) { data, response, error in
+                        if let data = data,
+                           let image = NSImage(data: data),
+                           image.size.width > 0 {
+                            DispatchQueue.main.async {
+                                completion(image)
+                            }
+                        } else {
+                            DispatchQueue.main.async {
+                                completion(nil)
+                            }
+                        }
+                    }
+                    googleFaviconTask.resume()
                 }
-            } catch {
-                // 错误处理，但不打印日志
             }
+            directFaviconTask.resume()
         }
-        
-        // 如果从根目录获取失败，尝试从 Google 获取图标
-        if let host = url.host,
-           let googleFaviconURL = URL(string: "https://www.google.com/s2/favicons?domain=\(host)&sz=64") {
-            do {
-                let (data, _) = try await session.data(from: googleFaviconURL)
-                if let image = NSImage(data: data) {
-                    await WebIconManager.shared.setIcon(image, for: self.id)
-                    completion(image)
-                    return
-                }
-            } catch {
-                // 错误处理，但不打印日志
-            }
-        }
-        
-        completion(nil)
-    }
-}
-
-// NSImage 扩展，添加 PNG 数据转换功能
-extension NSImage {
-    func pngData() -> Data? {
-        guard let tiffData = tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData) else {
-            return nil
-        }
-        return bitmap.representation(using: .png, properties: [:])
     }
 }
 

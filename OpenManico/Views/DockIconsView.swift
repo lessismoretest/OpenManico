@@ -72,7 +72,7 @@ struct DockIconsView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 16) {
             TopToolbarView(
                 appDisplayMode: $settings.appDisplayMode,
                 selectedAppGroup: $selectedAppGroup,
@@ -124,32 +124,10 @@ struct DockIconsView: View {
             }
         }
         .onAppear {
-            let startTime = Date()
-            print("[DockIconsView] ⏱️ 开始加载视图: \(startTime)")
-            
-            // 预加载所有网站图标
-            if settings.showWebShortcutsInFloatingWindow {
-                print("[DockIconsView] 🌐 开始加载网站图标")
-                print("[DockIconsView] 📊 当前网站总数: \(WebsiteManager.shared.websites.count)")
-                print("[DockIconsView] 🗂 已缓存图标数: \(WebIconManager.shared.getCachedIconCount())")
-                
-                Task {
-                    let iconLoadStart = Date()
-                    await WebIconManager.shared.preloadIcons(for: WebsiteManager.shared.websites)
-                    let iconLoadEnd = Date()
-                    let iconLoadTime = iconLoadEnd.timeIntervalSince(iconLoadStart)
-                    print("[DockIconsView] ⏱️ 网站图标加载耗时: \(String(format: "%.2f", iconLoadTime))秒")
-                }
-            }
-            
+            print("DockIconsView appeared, 当前显示模式: \(settings.appDisplayMode)")
             if settings.appDisplayMode == .all {
-                print("[DockIconsView] 📱 开始扫描已安装应用")
                 scanInstalledApps()
             }
-            
-            let endTime = Date()
-            let totalTime = endTime.timeIntervalSince(startTime)
-            print("[DockIconsView] ⏱️ 视图加载完成，总耗时: \(String(format: "%.2f", totalTime))秒")
         }
         .onChange(of: settings.appDisplayMode) { newMode in
             print("显示模式改变: \(newMode)")
@@ -507,7 +485,6 @@ private struct WebShortcutToolbarView: View {
 private struct WebShortcutListView: View {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var hotKeyManager = HotKeyManager.shared
-    @StateObject private var iconManager = WebIconManager.shared
     let websiteDisplayMode: WebsiteDisplayMode
     let webShortcutManager: WebShortcutManager
     let selectedWebGroup: UUID?
@@ -541,7 +518,7 @@ private struct WebShortcutListView: View {
                     if !shortcut.key.isEmpty || websiteDisplayMode == .all {
                         WebsiteIconView(
                             shortcut: shortcut,
-                            icon: iconManager.icon(for: shortcut.websiteId),
+                            icon: webIcons[shortcut.websiteId],
                             onIconLoad: { icon in
                                 var newIcons = webIcons
                                 newIcons[shortcut.websiteId] = icon
