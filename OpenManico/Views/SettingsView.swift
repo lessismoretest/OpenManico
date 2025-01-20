@@ -2,13 +2,13 @@ import SwiftUI
 import ServiceManagement
 import UniformTypeIdentifiers
 
+/**
+ * 设置视图
+ */
 struct SettingsView: View {
     @StateObject private var settings = AppSettings.shared
-    @State private var showingImportDialog = false
-    @State private var showingImportSheet = false
-    @State private var importData: ExportData?
-    @State private var hasAccessibilityPermission = AXIsProcessTrusted()
     @State private var showingExportSheet = false
+    @State private var showingImportSheet = false
     
     var body: some View {
         Form {
@@ -39,25 +39,26 @@ struct SettingsView: View {
                 HStack {
                     Text("辅助功能权限")
                     Spacer()
-                    if hasAccessibilityPermission {
+                    if AXIsProcessTrusted() {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
                     } else {
                         Button("前往设置") {
-                            openAccessibilityPreferences()
+                            let prefpaneUrl = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+                            NSWorkspace.shared.open(prefpaneUrl)
                         }
                     }
                 }
-                .onAppear {
-                    // 每次视图出现时检查权限状态
-                    hasAccessibilityPermission = AXIsProcessTrusted()
-                }
-                
+            } header: {
+                Text("通用")
+            }
+            
+            Section {
                 HStack {
                     Text("快捷键设置")
                     Spacer()
                     Button(action: {
-                        showingImportDialog = true
+                        showingImportSheet = true
                     }) {
                         Image(systemName: "square.and.arrow.down")
                     }
@@ -72,8 +73,6 @@ struct SettingsView: View {
                     .buttonStyle(.borderless)
                     .help("导出快捷键设置")
                 }
-            } header: {
-                Text("通用")
             }
             
             Section {
@@ -96,41 +95,13 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: 500)
         .sheet(isPresented: $showingExportSheet) {
             ExportSettingsView()
         }
         .sheet(isPresented: $showingImportSheet) {
-            if let data = importData {
-                ImportSettingsView(importData: data)
-            }
+            ImportSettingsView()
         }
-        .fileImporter(
-            isPresented: $showingImportDialog,
-            allowedContentTypes: [.json],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                guard let url = urls.first else { return }
-                
-                // 读取并解析导入数据
-                if let data = try? Data(contentsOf: url),
-                   let importedData = ExportManager.shared.importScenes(from: data) {
-                    self.importData = importedData
-                    self.showingImportSheet = true
-                } else {
-                    print("Failed to parse import file")
-                }
-            case .failure(let error):
-                print("Import failed: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    private func openAccessibilityPreferences() {
-        let prefpaneUrl = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-        NSWorkspace.shared.open(prefpaneUrl)
     }
 }
 

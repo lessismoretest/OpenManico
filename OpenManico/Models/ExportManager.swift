@@ -1,19 +1,19 @@
 import Foundation
 
 /**
- * 导出数据模型
+ * 导出数据管理器
  */
 struct ExportData: Codable {
-    var appScenes: [Scene]?
-    var webScenes: [WebScene]?
+    var websites: [Website]
+    var groups: [WebsiteGroup]
     var timestamp: Date
     var version: String
     
-    init(appScenes: [Scene]? = nil, webScenes: [WebScene]? = nil) {
-        self.appScenes = appScenes
-        self.webScenes = webScenes
+    init(websites: [Website], groups: [WebsiteGroup]) {
+        self.websites = websites
+        self.groups = groups
         self.timestamp = Date()
-        self.version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        self.version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     }
 }
 
@@ -25,14 +25,41 @@ class ExportManager {
     
     private init() {}
     
-    /// 导出选中的场景
-    func exportScenes(appScenes: [Scene]?, webScenes: [WebScene]?) -> Data? {
-        let exportData = ExportData(appScenes: appScenes, webScenes: webScenes)
-        return try? JSONEncoder().encode(exportData)
+    /// 导出数据
+    func exportData() -> Data? {
+        let websiteManager = WebsiteManager.shared
+        let exportData = ExportData(
+            websites: websiteManager.websites,
+            groups: websiteManager.groups
+        )
+        
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            encoder.dateEncodingStrategy = .iso8601
+            return try encoder.encode(exportData)
+        } catch {
+            print("[ExportManager] ❌ 导出数据失败: \(error)")
+            return nil
+        }
     }
     
-    /// 导入场景数据
-    func importScenes(from data: Data) -> ExportData? {
-        return try? JSONDecoder().decode(ExportData.self, from: data)
+    /// 导入数据
+    func importData(_ data: Data) -> Bool {
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let importedData = try decoder.decode(ExportData.self, from: data)
+            
+            let websiteManager = WebsiteManager.shared
+            websiteManager.websites = importedData.websites
+            websiteManager.groups = importedData.groups
+            
+            print("[ExportManager] ✅ 导入数据成功")
+            return true
+        } catch {
+            print("[ExportManager] ❌ 导入数据失败: \(error)")
+            return false
+        }
     }
 } 

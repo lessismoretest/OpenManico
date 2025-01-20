@@ -8,16 +8,22 @@ struct Website: Identifiable, Codable {
     let id: UUID
     var url: String
     var name: String
+    var shortcutKey: String?  // 快捷键，可选
+    var groupIds: [UUID] = [] // 所属分组ID列表
+    var isEnabled: Bool = true // 是否启用
     
     // 并发控制
     private static let semaphore = DispatchSemaphore(value: 3) // 最多同时加载3个图标
     private static var loadingQueue = Set<String>() // 正在加载的URL集合
     private static let queueLock = NSLock() // 用于保护loadingQueue的锁
     
-    init(id: UUID = UUID(), url: String, name: String) {
+    init(id: UUID = UUID(), url: String, name: String, shortcutKey: String? = nil, groupIds: [UUID] = [], isEnabled: Bool = true) {
         self.id = id
         self.url = url
         self.name = name
+        self.shortcutKey = shortcutKey
+        self.groupIds = groupIds
+        self.isEnabled = isEnabled
     }
     
     func fetchIcon(completion: @escaping (NSImage?) -> Void) async {
@@ -107,113 +113,179 @@ class WebsiteManager: ObservableObject {
     @Published var websites: [Website] = [] {
         didSet {
             print("[WebsiteManager] 网站列表已更新，当前有 \(websites.count) 个网站")
-            for website in websites {
-                print("[WebsiteManager] - 网站: \(website.name), ID: \(website.id)")
-            }
+            saveWebsites()
+        }
+    }
+    
+    /// 分组列表
+    @Published var groups: [WebsiteGroup] = [] {
+        didSet {
+            print("[WebsiteManager] 分组列表已更新，当前有 \(groups.count) 个分组")
+            saveGroups()
         }
     }
     
     private let websitesKey = "Websites"
+    private let groupsKey = "WebsiteGroups"
     
     private init() {
         print("[WebsiteManager] 初始化")
         loadWebsites()
+        loadGroups()
     }
     
-    /// 加载保存的网站列表
-    private func loadWebsites() {
-        print("[WebsiteManager] 开始加载网站")
-        if let data = UserDefaults.standard.data(forKey: websitesKey) {
-            print("[WebsiteManager] 从 UserDefaults 读取到数据: \(data.count) 字节")
-            do {
-                let websites = try JSONDecoder().decode([Website].self, from: data)
-                print("[WebsiteManager] 成功解码 \(websites.count) 个网站")
-                for website in websites {
-                    print("[WebsiteManager] - 加载网站: \(website.name)")
-                    print("[WebsiteManager] - URL: \(website.url)")
-                    print("[WebsiteManager] - ID: \(website.id)")
-                }
-                self.websites = websites
-            } catch {
-                print("[WebsiteManager] ❌ 解码网站数据失败: \(error)")
-                print("[WebsiteManager] 错误详情: \(error.localizedDescription)")
-            }
-        } else {
-            print("[WebsiteManager] UserDefaults 中没有找到网站数据")
-            print("[WebsiteManager] Key: \(websitesKey)")
-        }
-    }
+    // MARK: - 网站管理方法
     
-    /// 保存网站列表
-    private func saveWebsites() {
-        print("[WebsiteManager] 开始保存网站，共 \(websites.count) 个")
-        do {
-            let data = try JSONEncoder().encode(websites)
-            print("[WebsiteManager] 编码后数据大小: \(data.count) 字节")
-            UserDefaults.standard.set(data, forKey: websitesKey)
-            UserDefaults.standard.synchronize()
-            print("[WebsiteManager] ✅ 网站保存成功")
-            
-            // 验证保存
-            if let savedData = UserDefaults.standard.data(forKey: websitesKey) {
-                print("[WebsiteManager] 验证：保存的数据大小 \(savedData.count) 字节")
-                if let savedWebsites = try? JSONDecoder().decode([Website].self, from: savedData) {
-                    print("[WebsiteManager] 验证：成功读取 \(savedWebsites.count) 个网站")
-                    for website in savedWebsites {
-                        print("[WebsiteManager] - 网站: \(website.name), URL: \(website.url)")
-                    }
-                }
-            }
-        } catch {
-            print("[WebsiteManager] ❌ 保存网站失败: \(error)")
+    /// 根据显示模式和分组获取网站列表
+    func getWebsites(mode: WebsiteDisplayMode, groupId: UUID? = nil) -> [Website] {
+        var filtered = websites
+        
+        // 按分组筛选
+        if let groupId = groupId {
+            filtered = filtered.filter { $0.groupIds.contains(groupId) }
         }
+        
+        // 按显示模式筛选
+        switch mode {
+        case .shortcutOnly:
+            filtered = filtered.filter { $0.shortcutKey != nil }
+        case .all:
+            break // 显示所有
+        }
+        
+        return filtered.sorted(by: { $0.name < $1.name })
     }
     
     /// 添加新网站
     func addWebsite(_ website: Website) {
-        print("[WebsiteManager] 添加新网站: \(website.name), ID: \(website.id)")
+        print("[WebsiteManager] 添加新网站: \(website.name)")
         websites.append(website)
-        saveWebsites()
     }
     
     /// 更新网站
     func updateWebsite(_ website: Website) {
-        print("[WebsiteManager] 更新网站: \(website.name), ID: \(website.id)")
+        print("[WebsiteManager] 更新网站: \(website.name)")
         if let index = websites.firstIndex(where: { $0.id == website.id }) {
             websites[index] = website
-            saveWebsites()
-        } else {
-            print("[WebsiteManager] ❌ 未找到要更新的网站")
         }
     }
     
     /// 删除网站
     func deleteWebsite(_ website: Website) {
-        print("[WebsiteManager] 删除网站: \(website.name), ID: \(website.id)")
+        print("[WebsiteManager] 删除网站: \(website.name)")
         websites.removeAll { $0.id == website.id }
-        saveWebsites()
     }
     
-    /// 根据 URL 查找网站
-    func findWebsite(url: String) -> Website? {
-        let website = websites.first { $0.url == url }
-        print("[WebsiteManager] 根据 URL 查找网站: \(url) -> \(website != nil ? "找到" : "未找到")")
-        return website
+    /// 设置网站快捷键
+    func setShortcut(_ key: String?, for websiteId: UUID) {
+        print("[WebsiteManager] 设置网站快捷键: \(key ?? "nil")")
+        if let index = websites.firstIndex(where: { $0.id == websiteId }) {
+            var website = websites[index]
+            website.shortcutKey = key
+            websites[index] = website
+        }
     }
     
-    /// 根据 ID 查找网站
-    func findWebsite(id: UUID) -> Website? {
-        print("[WebsiteManager] 正在查找网站，ID: \(id)")
-        print("[WebsiteManager] 当前所有网站:")
-        for website in websites {
-            print("- ID: \(website.id), 名称: \(website.name), URL: \(website.url)")
+    // MARK: - 分组管理方法
+    
+    /// 添加新分组
+    func addGroup(name: String) {
+        print("[WebsiteManager] 添加分组: \(name)")
+        let group = WebsiteGroup(name: name, websiteIds: [])
+        groups.append(group)
+    }
+    
+    /// 更新分组
+    func updateGroup(_ group: WebsiteGroup) {
+        print("[WebsiteManager] 更新分组: \(group.name)")
+        if let index = groups.firstIndex(where: { $0.id == group.id }) {
+            groups[index] = group
         }
-        let website = websites.first { $0.id == id }
-        if let website = website {
-            print("[WebsiteManager] ✅ 找到网站: \(website.name)")
-        } else {
-            print("[WebsiteManager] ❌ 未找到网站")
+    }
+    
+    /// 删除分组
+    func deleteGroup(_ group: WebsiteGroup) {
+        print("[WebsiteManager] 删除分组: \(group.name)")
+        // 从所有网站中移除该分组ID
+        for index in websites.indices {
+            websites[index].groupIds.removeAll { $0 == group.id }
         }
-        return website
+        groups.removeAll { $0.id == group.id }
+    }
+    
+    /// 添加网站到分组
+    func addWebsiteToGroup(_ websiteId: UUID, groupId: UUID) {
+        print("[WebsiteManager] 添加网站到分组")
+        if let index = websites.firstIndex(where: { $0.id == websiteId }) {
+            var website = websites[index]
+            if !website.groupIds.contains(groupId) {
+                website.groupIds.append(groupId)
+                websites[index] = website
+            }
+        }
+    }
+    
+    /// 从分组中移除网站
+    func removeWebsiteFromGroup(_ websiteId: UUID, groupId: UUID) {
+        print("[WebsiteManager] 从分组中移除网站")
+        if let index = websites.firstIndex(where: { $0.id == websiteId }) {
+            var website = websites[index]
+            website.groupIds.removeAll { $0 == groupId }
+            websites[index] = website
+        }
+    }
+    
+    // MARK: - 数据持久化
+    
+    private func loadWebsites() {
+        print("[WebsiteManager] 加载网站数据")
+        if let data = UserDefaults.standard.data(forKey: websitesKey) {
+            do {
+                websites = try JSONDecoder().decode([Website].self, from: data)
+                print("[WebsiteManager] 成功加载 \(websites.count) 个网站")
+            } catch {
+                print("[WebsiteManager] ❌ 加载网站数据失败: \(error)")
+            }
+        }
+    }
+    
+    private func saveWebsites() {
+        print("[WebsiteManager] 保存网站数据")
+        do {
+            let data = try JSONEncoder().encode(websites)
+            UserDefaults.standard.set(data, forKey: websitesKey)
+            print("[WebsiteManager] ✅ 网站数据保存成功")
+        } catch {
+            print("[WebsiteManager] ❌ 保存网站数据失败: \(error)")
+        }
+    }
+    
+    private func loadGroups() {
+        print("[WebsiteManager] 加载分组数据")
+        if let data = UserDefaults.standard.data(forKey: groupsKey) {
+            do {
+                groups = try JSONDecoder().decode([WebsiteGroup].self, from: data)
+                print("[WebsiteManager] 成功加载 \(groups.count) 个分组")
+            } catch {
+                print("[WebsiteManager] ❌ 加载分组数据失败: \(error)")
+            }
+        }
+        
+        // 如果没有分组，创建默认分组
+        if groups.isEmpty {
+            print("[WebsiteManager] 创建默认分组")
+            addGroup(name: "常用")
+        }
+    }
+    
+    private func saveGroups() {
+        print("[WebsiteManager] 保存分组数据")
+        do {
+            let data = try JSONEncoder().encode(groups)
+            UserDefaults.standard.set(data, forKey: groupsKey)
+            print("[WebsiteManager] ✅ 分组数据保存成功")
+        } catch {
+            print("[WebsiteManager] ❌ 保存分组数据失败: \(error)")
+        }
     }
 } 

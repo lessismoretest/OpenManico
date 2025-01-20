@@ -111,6 +111,23 @@ enum WindowPosition: String, Codable {
     }
 }
 
+// 快捷键标签位置枚举
+enum ShortcutLabelPosition: String, Codable {
+    case top = "top"
+    case bottom = "bottom"
+    case left = "left"
+    case right = "right"
+    
+    var description: String {
+        switch self {
+        case .top: return "顶部"
+        case .bottom: return "底部"
+        case .left: return "左侧"
+        case .right: return "右侧"
+        }
+    }
+}
+
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
     
@@ -200,9 +217,6 @@ class AppSettings: ObservableObject {
             // 避免初始化时的循环调用
             guard !isInitializing else { return }
             
-            // 更新热键绑定
-            HotKeyManager.shared.updateShortcuts()
-            
             // 如果不是在切换场景过程中，则更新当前场景
             if !isUpdatingScene {
                 updateCurrentSceneShortcuts()
@@ -214,6 +228,11 @@ class AppSettings: ObservableObject {
     @Published var totalUsageCount: Int = 0
     @Published var showFloatingWindow: Bool = true
     @Published var showWebShortcutsInFloatingWindow: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    @Published var showAppsInFloatingWindow: Bool = true {
         didSet {
             saveSettings()
         }
@@ -336,12 +355,117 @@ class AppSettings: ObservableObject {
         }
     }
     
+    // 应用快捷键标签设置
+    @Published var showAppShortcutLabel: Bool = true {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var appShortcutLabelPosition: ShortcutLabelPosition = .bottom {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var appShortcutLabelBackgroundColor: Color = .black.opacity(0.6) {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var appShortcutLabelTextColor: Color = .white {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var appShortcutLabelOffsetX: Double = 0 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var appShortcutLabelOffsetY: Double = 0 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var appShortcutLabelFontSize: Double = 10 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    // 网站快捷键标签设置
+    @Published var showWebShortcutLabel: Bool = true {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var webShortcutLabelPosition: ShortcutLabelPosition = .bottom {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var webShortcutLabelBackgroundColor: Color = .black.opacity(0.6) {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var webShortcutLabelTextColor: Color = .white {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var webShortcutLabelOffsetX: Double = 0 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var webShortcutLabelOffsetY: Double = 0 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var webShortcutLabelFontSize: Double = 10 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var floatingWindowCornerRadius: Double = 16 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var showDivider: Bool = true {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var dividerOpacity: Double = 0.3 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
     private let shortcutsKey = "AppShortcuts"
     private let themeKey = "AppTheme"
     private let launchAtLoginKey = "LaunchAtLogin"
     private let usageCountKey = "UsageCount"
     private let showFloatingWindowKey = "ShowFloatingWindow"
     private let showWebShortcutsInFloatingWindowKey = "ShowWebShortcutsInFloatingWindow"
+    private let showAppsInFloatingWindowKey = "ShowAppsInFloatingWindow"
     private let openOnMouseHoverKey = "OpenOnMouseHover"
     private let showWindowOnHoverKey = "ShowWindowOnHover"
     private let openWebOnHoverKey = "OpenWebOnHover"
@@ -374,6 +498,23 @@ class AppSettings: ObservableObject {
     private let showWebsiteNameKey = "ShowWebsiteName"
     private let appNameFontSizeKey = "AppNameFontSize"
     private let websiteNameFontSizeKey = "WebsiteNameFontSize"
+    private let showAppShortcutLabelKey = "ShowAppShortcutLabel"
+    private let appShortcutLabelPositionKey = "AppShortcutLabelPosition"
+    private let appShortcutLabelBackgroundColorKey = "AppShortcutLabelBackgroundColor"
+    private let appShortcutLabelTextColorKey = "AppShortcutLabelTextColor"
+    private let appShortcutLabelOffsetXKey = "AppShortcutLabelOffsetX"
+    private let appShortcutLabelOffsetYKey = "AppShortcutLabelOffsetY"
+    private let appShortcutLabelFontSizeKey = "AppShortcutLabelFontSize"
+    private let showWebShortcutLabelKey = "ShowWebShortcutLabel"
+    private let webShortcutLabelPositionKey = "WebShortcutLabelPosition"
+    private let webShortcutLabelBackgroundColorKey = "WebShortcutLabelBackgroundColor"
+    private let webShortcutLabelTextColorKey = "WebShortcutLabelTextColor"
+    private let webShortcutLabelOffsetXKey = "WebShortcutLabelOffsetX"
+    private let webShortcutLabelOffsetYKey = "WebShortcutLabelOffsetY"
+    private let webShortcutLabelFontSizeKey = "WebShortcutLabelFontSize"
+    private let floatingWindowCornerRadiusKey = "FloatingWindowCornerRadius"
+    private let showDividerKey = "ShowDivider"
+    private let dividerOpacityKey = "DividerOpacity"
     
     private init() {
         isInitializing = true
@@ -392,6 +533,29 @@ class AppSettings: ObservableObject {
         
         // 设置启动登录状态
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        
+        appShortcutLabelFontSize = UserDefaults.standard.double(forKey: appShortcutLabelFontSizeKey)
+        if !UserDefaults.standard.contains(key: appShortcutLabelFontSizeKey) {
+            appShortcutLabelFontSize = 10
+            UserDefaults.standard.set(10, forKey: appShortcutLabelFontSizeKey)
+        }
+        
+        webShortcutLabelFontSize = UserDefaults.standard.double(forKey: webShortcutLabelFontSizeKey)
+        if !UserDefaults.standard.contains(key: webShortcutLabelFontSizeKey) {
+            webShortcutLabelFontSize = 10
+            UserDefaults.standard.set(10, forKey: webShortcutLabelFontSizeKey)
+        }
+        
+        showDivider = UserDefaults.standard.bool(forKey: showDividerKey)
+        
+        dividerOpacity = UserDefaults.standard.double(forKey: dividerOpacityKey)
+        if !UserDefaults.standard.contains(key: dividerOpacityKey) {
+            dividerOpacity = 0.3
+            UserDefaults.standard.set(0.3, forKey: dividerOpacityKey)
+        }
+        
+        showWebShortcutsInFloatingWindow = UserDefaults.standard.bool(forKey: showWebShortcutsInFloatingWindowKey)
+        showAppsInFloatingWindow = UserDefaults.standard.bool(forKey: showAppsInFloatingWindowKey)
         
         isInitializing = false
     }
@@ -451,10 +615,6 @@ class AppSettings: ObservableObject {
         // 加载其他布尔值设置
         totalUsageCount = UserDefaults.standard.integer(forKey: usageCountKey)
         showFloatingWindow = UserDefaults.standard.bool(forKey: showFloatingWindowKey)
-        showWebShortcutsInFloatingWindow = UserDefaults.standard.bool(forKey: showWebShortcutsInFloatingWindowKey)
-        openOnMouseHover = UserDefaults.standard.bool(forKey: openOnMouseHoverKey)
-        showWindowOnHover = UserDefaults.standard.bool(forKey: showWindowOnHoverKey)
-        openWebOnHover = UserDefaults.standard.bool(forKey: openWebOnHoverKey)
         showAllAppsInFloatingWindow = UserDefaults.standard.bool(forKey: showAllAppsInFloatingWindowKey)
         
         // 加载数值设置，如果没有则使用默认值
@@ -572,6 +732,55 @@ class AppSettings: ObservableObject {
             UserDefaults.standard.set(10, forKey: websiteNameFontSizeKey)
         }
         
+        // 加载快捷键标签设置
+        showAppShortcutLabel = UserDefaults.standard.bool(forKey: showAppShortcutLabelKey)
+        appShortcutLabelPosition = ShortcutLabelPosition(rawValue: UserDefaults.standard.string(forKey: appShortcutLabelPositionKey) ?? "bottom") ?? .bottom
+        
+        if let colorData = UserDefaults.standard.data(forKey: appShortcutLabelBackgroundColorKey),
+           let color = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
+            appShortcutLabelBackgroundColor = Color(nsColor: color)
+        } else {
+            appShortcutLabelBackgroundColor = Color.black.opacity(0.6)
+        }
+        
+        if let colorData = UserDefaults.standard.data(forKey: appShortcutLabelTextColorKey),
+           let color = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
+            appShortcutLabelTextColor = Color(nsColor: color)
+        } else {
+            appShortcutLabelTextColor = .white
+        }
+        
+        appShortcutLabelOffsetX = UserDefaults.standard.double(forKey: appShortcutLabelOffsetXKey)
+        appShortcutLabelOffsetY = UserDefaults.standard.double(forKey: appShortcutLabelOffsetYKey)
+        appShortcutLabelFontSize = UserDefaults.standard.double(forKey: appShortcutLabelFontSizeKey)
+        
+        showWebShortcutLabel = UserDefaults.standard.bool(forKey: showWebShortcutLabelKey)
+        webShortcutLabelPosition = ShortcutLabelPosition(rawValue: UserDefaults.standard.string(forKey: webShortcutLabelPositionKey) ?? "bottom") ?? .bottom
+        
+        if let colorData = UserDefaults.standard.data(forKey: webShortcutLabelBackgroundColorKey),
+           let color = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
+            webShortcutLabelBackgroundColor = Color(nsColor: color)
+        } else {
+            webShortcutLabelBackgroundColor = Color.black.opacity(0.6)
+        }
+        
+        if let colorData = UserDefaults.standard.data(forKey: webShortcutLabelTextColorKey),
+           let color = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
+            webShortcutLabelTextColor = Color(nsColor: color)
+        } else {
+            webShortcutLabelTextColor = .white
+        }
+        
+        webShortcutLabelOffsetX = UserDefaults.standard.double(forKey: webShortcutLabelOffsetXKey)
+        webShortcutLabelOffsetY = UserDefaults.standard.double(forKey: webShortcutLabelOffsetYKey)
+        webShortcutLabelFontSize = UserDefaults.standard.double(forKey: webShortcutLabelFontSizeKey)
+        
+        floatingWindowCornerRadius = UserDefaults.standard.double(forKey: floatingWindowCornerRadiusKey)
+        if !UserDefaults.standard.contains(key: floatingWindowCornerRadiusKey) {
+            floatingWindowCornerRadius = 16
+            UserDefaults.standard.set(16, forKey: floatingWindowCornerRadiusKey)
+        }
+        
         // 确保所有默认值都被保存
         UserDefaults.standard.synchronize()
     }
@@ -599,6 +808,7 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(totalUsageCount, forKey: usageCountKey)
         UserDefaults.standard.set(showFloatingWindow, forKey: showFloatingWindowKey)
         UserDefaults.standard.set(showWebShortcutsInFloatingWindow, forKey: showWebShortcutsInFloatingWindowKey)
+        UserDefaults.standard.set(showAppsInFloatingWindow, forKey: showAppsInFloatingWindowKey)
         UserDefaults.standard.set(openOnMouseHover, forKey: openOnMouseHoverKey)
         UserDefaults.standard.set(showWindowOnHover, forKey: showWindowOnHoverKey)
         UserDefaults.standard.set(openWebOnHover, forKey: openWebOnHoverKey)
@@ -636,6 +846,41 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(appNameFontSize, forKey: appNameFontSizeKey)
         UserDefaults.standard.set(websiteNameFontSize, forKey: websiteNameFontSizeKey)
         
+        // 保存快捷键标签设置
+        UserDefaults.standard.set(showAppShortcutLabel, forKey: showAppShortcutLabelKey)
+        UserDefaults.standard.set(appShortcutLabelPosition.rawValue, forKey: appShortcutLabelPositionKey)
+        
+        if let colorData = try? NSKeyedArchiver.archivedData(withRootObject: NSColor(appShortcutLabelBackgroundColor), requiringSecureCoding: false) {
+            UserDefaults.standard.set(colorData, forKey: appShortcutLabelBackgroundColorKey)
+        }
+        
+        if let colorData = try? NSKeyedArchiver.archivedData(withRootObject: NSColor(appShortcutLabelTextColor), requiringSecureCoding: false) {
+            UserDefaults.standard.set(colorData, forKey: appShortcutLabelTextColorKey)
+        }
+        
+        UserDefaults.standard.set(appShortcutLabelOffsetX, forKey: appShortcutLabelOffsetXKey)
+        UserDefaults.standard.set(appShortcutLabelOffsetY, forKey: appShortcutLabelOffsetYKey)
+        UserDefaults.standard.set(appShortcutLabelFontSize, forKey: appShortcutLabelFontSizeKey)
+        
+        UserDefaults.standard.set(showWebShortcutLabel, forKey: showWebShortcutLabelKey)
+        UserDefaults.standard.set(webShortcutLabelPosition.rawValue, forKey: webShortcutLabelPositionKey)
+        
+        if let colorData = try? NSKeyedArchiver.archivedData(withRootObject: NSColor(webShortcutLabelBackgroundColor), requiringSecureCoding: false) {
+            UserDefaults.standard.set(colorData, forKey: webShortcutLabelBackgroundColorKey)
+        }
+        
+        if let colorData = try? NSKeyedArchiver.archivedData(withRootObject: NSColor(webShortcutLabelTextColor), requiringSecureCoding: false) {
+            UserDefaults.standard.set(colorData, forKey: webShortcutLabelTextColorKey)
+        }
+        
+        UserDefaults.standard.set(webShortcutLabelOffsetX, forKey: webShortcutLabelOffsetXKey)
+        UserDefaults.standard.set(webShortcutLabelOffsetY, forKey: webShortcutLabelOffsetYKey)
+        UserDefaults.standard.set(webShortcutLabelFontSize, forKey: webShortcutLabelFontSizeKey)
+        
+        UserDefaults.standard.set(floatingWindowCornerRadius, forKey: floatingWindowCornerRadiusKey)
+        UserDefaults.standard.set(showDivider, forKey: showDividerKey)
+        UserDefaults.standard.set(dividerOpacity, forKey: dividerOpacityKey)
+        
         // 立即同步所有设置
         UserDefaults.standard.synchronize()
         print("[AppSettings] 设置保存完成")
@@ -671,11 +916,12 @@ class AppSettings: ObservableObject {
         }
         
         // 导出网站快捷键
-        let webShortcuts = HotKeyManager.shared.webShortcutManager.shortcuts.map { shortcut -> [String: String] in
+        let webShortcuts = WebsiteManager.shared.websites.compactMap { website -> [String: String]? in
+            guard let key = website.shortcutKey else { return nil }
             return [
-                "key": shortcut.key,
-                "url": shortcut.url,
-                "name": shortcut.name
+                "key": key,
+                "url": website.url,
+                "name": website.name
             ]
         }
         
@@ -713,13 +959,14 @@ class AppSettings: ObservableObject {
     }
     
     func selectNextWebShortcut() {
-        let sortedWebShortcuts = HotKeyManager.shared.webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key })
-        if sortedWebShortcuts.isEmpty { return }
+        let websites = WebsiteManager.shared.websites.filter { $0.shortcutKey != nil }
+        let sortedWebsites = websites.sorted { $0.shortcutKey ?? "" < $1.shortcutKey ?? "" }
+        if sortedWebsites.isEmpty { return }
         
         if selectedWebShortcutIndex == -1 {
             selectedWebShortcutIndex = 0
         } else {
-            selectedWebShortcutIndex = (selectedWebShortcutIndex + 1) % sortedWebShortcuts.count
+            selectedWebShortcutIndex = (selectedWebShortcutIndex + 1) % sortedWebsites.count
         }
     }
     
@@ -731,12 +978,13 @@ class AppSettings: ObservableObject {
         return sortedShortcuts[selectedShortcutIndex]
     }
     
-    var selectedWebShortcut: WebShortcut? {
-        let sortedWebShortcuts = HotKeyManager.shared.webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key })
-        guard selectedWebShortcutIndex >= 0 && selectedWebShortcutIndex < sortedWebShortcuts.count else {
+    var selectedWebShortcut: Website? {
+        let websites = WebsiteManager.shared.websites.filter { $0.shortcutKey != nil }
+        let sortedWebsites = websites.sorted { $0.shortcutKey ?? "" < $1.shortcutKey ?? "" }
+        guard selectedWebShortcutIndex >= 0 && selectedWebShortcutIndex < sortedWebsites.count else {
             return nil
         }
-        return sortedWebShortcuts[selectedWebShortcutIndex]
+        return sortedWebsites[selectedWebShortcutIndex]
     }
     
     // 场景管理相关方法
@@ -854,5 +1102,51 @@ class AppSettings: ObservableObject {
 extension UserDefaults {
     func contains(key: String) -> Bool {
         return object(forKey: key) != nil
+    }
+}
+
+class AppShortcutManager: ObservableObject {
+    static let shared = AppShortcutManager()
+    
+    @Published var shortcuts: [AppShortcut] = []
+    
+    private init() {
+        loadShortcuts()
+    }
+    
+    private func loadShortcuts() {
+        if let data = UserDefaults.standard.data(forKey: "AppShortcuts") {
+            do {
+                shortcuts = try JSONDecoder().decode([AppShortcut].self, from: data)
+            } catch {
+                print("[AppShortcutManager] ❌ 加载快捷键失败: \(error)")
+            }
+        }
+    }
+    
+    private func saveShortcuts() {
+        do {
+            let data = try JSONEncoder().encode(shortcuts)
+            UserDefaults.standard.set(data, forKey: "AppShortcuts")
+        } catch {
+            print("[AppShortcutManager] ❌ 保存快捷键失败: \(error)")
+        }
+    }
+    
+    func addShortcut(_ shortcut: AppShortcut) {
+        shortcuts.append(shortcut)
+        saveShortcuts()
+    }
+    
+    func updateShortcut(_ shortcut: AppShortcut) {
+        if let index = shortcuts.firstIndex(where: { $0.id == shortcut.id }) {
+            shortcuts[index] = shortcut
+            saveShortcuts()
+        }
+    }
+    
+    func deleteShortcut(_ shortcut: AppShortcut) {
+        shortcuts.removeAll { $0.id == shortcut.id }
+        saveShortcuts()
     }
 } 

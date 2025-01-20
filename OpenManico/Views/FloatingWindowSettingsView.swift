@@ -47,6 +47,18 @@ struct FloatingWindowSettingsView: View {
                         }
                     }
                     
+                    VStack(alignment: .leading) {
+                        Text("窗口圆角")
+                        HStack {
+                            Slider(value: $settings.floatingWindowCornerRadius, in: 0...32, step: 2)
+                                .onChange(of: settings.floatingWindowCornerRadius) { _ in
+                                    DockIconsWindowController.shared.updatePreviewWindow()
+                                }
+                            Text("\(Int(settings.floatingWindowCornerRadius))")
+                                .frame(width: 30)
+                        }
+                    }
+                    
                     Divider()
                     
                     // 位置设置
@@ -199,36 +211,121 @@ struct FloatingWindowSettingsView: View {
                         Divider()
                             .padding(.vertical, 4)
                         
-                        // 图标标签设置
-                        Text("图标标签")
+                        // 应用快捷键标签设置
+                        Text("应用快捷键标签")
                             .font(.headline)
                             .padding(.top, 8)
                         
-                        Toggle("显示应用名称", isOn: $settings.showAppName)
-                        Toggle("显示网站名称", isOn: $settings.showWebsiteName)
+                        Toggle("显示应用快捷键标签", isOn: $settings.showAppShortcutLabel)
                         
-                        if settings.showAppName {
+                        if settings.showAppShortcutLabel {
+                            Picker("标签位置", selection: $settings.appShortcutLabelPosition) {
+                                ForEach([
+                                    ShortcutLabelPosition.top,
+                                    ShortcutLabelPosition.bottom,
+                                    ShortcutLabelPosition.left,
+                                    ShortcutLabelPosition.right
+                                ], id: \.self) { position in
+                                    Text(position.description).tag(position)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            
+                            ColorPicker("标签背景色", selection: $settings.appShortcutLabelBackgroundColor)
+                            ColorPicker("标签文字色", selection: $settings.appShortcutLabelTextColor)
+                            
                             HStack {
-                                Text("应用名称大小")
-                                Slider(value: $settings.appNameFontSize, in: 8...16, step: 1)
-                                Text("\(Int(settings.appNameFontSize))")
+                                Text("标签大小")
+                                Slider(value: $settings.appShortcutLabelFontSize, in: 8...16, step: 1)
+                                Text("\(Int(settings.appShortcutLabelFontSize))")
                                     .frame(width: 30)
                             }
+                            
+                            VStack(alignment: .leading) {
+                                Text("标签位置微调")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                
+                                HStack {
+                                    Text("水平偏移")
+                                    Slider(value: $settings.appShortcutLabelOffsetX, in: -20...20, step: 1)
+                                    Text("\(Int(settings.appShortcutLabelOffsetX))")
+                                        .frame(width: 30)
+                                }
+                                
+                                HStack {
+                                    Text("垂直偏移")
+                                    Slider(value: $settings.appShortcutLabelOffsetY, in: -20...20, step: 1)
+                                    Text("\(Int(settings.appShortcutLabelOffsetY))")
+                                        .frame(width: 30)
+                                }
+                            }
+                            .padding(.top, 4)
                         }
                         
-                        if settings.showWebsiteName {
+                        Divider()
+                            .padding(.vertical, 4)
+                        
+                        // 网站快捷键标签设置
+                        Text("网站快捷键标签")
+                            .font(.headline)
+                            .padding(.top, 8)
+                        
+                        Toggle("显示网站快捷键标签", isOn: $settings.showWebShortcutLabel)
+                        
+                        if settings.showWebShortcutLabel {
+                            Picker("标签位置", selection: $settings.webShortcutLabelPosition) {
+                                ForEach([
+                                    ShortcutLabelPosition.top,
+                                    ShortcutLabelPosition.bottom,
+                                    ShortcutLabelPosition.left,
+                                    ShortcutLabelPosition.right
+                                ], id: \.self) { position in
+                                    Text(position.description).tag(position)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            
+                            ColorPicker("标签背景色", selection: $settings.webShortcutLabelBackgroundColor)
+                            ColorPicker("标签文字色", selection: $settings.webShortcutLabelTextColor)
+                            
                             HStack {
-                                Text("网站名称大小")
-                                Slider(value: $settings.websiteNameFontSize, in: 8...16, step: 1)
-                                Text("\(Int(settings.websiteNameFontSize))")
+                                Text("标签大小")
+                                Slider(value: $settings.webShortcutLabelFontSize, in: 8...16, step: 1)
+                                Text("\(Int(settings.webShortcutLabelFontSize))")
                                     .frame(width: 30)
                             }
+                            
+                            VStack(alignment: .leading) {
+                                Text("标签位置微调")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                
+                                HStack {
+                                    Text("水平偏移")
+                                    Slider(value: $settings.webShortcutLabelOffsetX, in: -20...20, step: 1)
+                                    Text("\(Int(settings.webShortcutLabelOffsetX))")
+                                        .frame(width: 30)
+                                }
+                                
+                                HStack {
+                                    Text("垂直偏移")
+                                    Slider(value: $settings.webShortcutLabelOffsetY, in: -20...20, step: 1)
+                                    Text("\(Int(settings.webShortcutLabelOffsetY))")
+                                        .frame(width: 30)
+                                }
+                            }
+                            .padding(.top, 4)
                         }
                         
                         Divider()
                             .padding(.vertical, 4)
                         
                         // 图标悬停动画设置
+                        Text("图标悬停动画")
+                            .font(.headline)
+                            .padding(.top, 8)
+                        
                         Toggle("启用悬停动画", isOn: $settings.useHoverAnimation)
                         
                         if settings.useHoverAnimation {
@@ -253,13 +350,20 @@ struct FloatingWindowSettingsView: View {
                 
                 // 显示内容设置组
                 Section {
-                    Picker("应用显示模式", selection: $settings.appDisplayMode) {
-                        ForEach([AppDisplayMode.all, AppDisplayMode.shortcutOnly, AppDisplayMode.runningOnly], id: \.self) { mode in
-                            Text(mode.description).tag(mode)
+                    Toggle("显示应用", isOn: $settings.showAppsInFloatingWindow)
+                        .onChange(of: settings.showAppsInFloatingWindow) { _ in
+                            settings.saveSettings()
                         }
-                    }
-                    .onChange(of: settings.appDisplayMode) { _ in
-                        settings.saveSettings()
+                    
+                    if settings.showAppsInFloatingWindow {
+                        Picker("应用显示模式", selection: $settings.appDisplayMode) {
+                            ForEach([AppDisplayMode.all, AppDisplayMode.shortcutOnly, AppDisplayMode.runningOnly], id: \.self) { mode in
+                                Text(mode.description).tag(mode)
+                            }
+                        }
+                        .onChange(of: settings.appDisplayMode) { _ in
+                            settings.saveSettings()
+                        }
                     }
                     
                     Toggle("显示网站快捷键", isOn: $settings.showWebShortcutsInFloatingWindow)
@@ -268,6 +372,20 @@ struct FloatingWindowSettingsView: View {
                         }
                     
                     if settings.showWebShortcutsInFloatingWindow {
+                        Divider()
+                            .padding(.vertical, 4)
+                        
+                        Toggle("显示分割线", isOn: $settings.showDivider)
+                        
+                        if settings.showDivider {
+                            HStack {
+                                Text("分割线不透明度")
+                                Slider(value: $settings.dividerOpacity, in: 0.1...1.0, step: 0.1)
+                                Text(String(format: "%.1f", settings.dividerOpacity))
+                                    .frame(width: 30)
+                            }
+                        }
+                        
                         Picker("网站显示模式", selection: $settings.websiteDisplayMode) {
                             ForEach([WebsiteDisplayMode.shortcutOnly, WebsiteDisplayMode.all], id: \.self) { mode in
                                 Text(mode.description).tag(mode)

@@ -6,7 +6,6 @@ import AppKit
  */
 struct WebsiteListView: View {
     @StateObject private var websiteManager = WebsiteManager.shared
-    @StateObject private var groupManager = WebsiteGroupManager.shared
     @State private var searchText = ""
     @State private var editingWebsite: Website?
     @State private var showingAddSheet = false
@@ -18,52 +17,17 @@ struct WebsiteListView: View {
     @State private var visibleRows: Set<UUID> = []
     
     private var filteredWebsites: [Website] {
-        // 获取当前分组的网站
-        let websites: [Website]
+        var websites = websiteManager.getWebsites(mode: .all, groupId: selectedGroup)
         
-        if let groupId = selectedGroup {
-            // 如果选中了分组，显示该分组的网站
-            let websiteIds = groupManager.groups.first(where: { $0.id == groupId })?.websiteIds ?? []
-            websites = websiteManager.websites.filter { website in
-                websiteIds.contains(website.id)
+        // 如果有搜索文本，进行过滤
+        if !searchText.isEmpty {
+            websites = websites.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.url.localizedCaseInsensitiveContains(searchText)
             }
-        } else if let defaultGroup = groupManager.groups.first {
-            // 如果没有选中分组，使用第一个分组（常用）
-            let websiteIds = defaultGroup.websiteIds
-            websites = websiteManager.websites.filter { website in
-                websiteIds.contains(website.id)
-            }
-        } else {
-            // 如果没有任何分组，返回空数组
-            websites = []
         }
         
-        // 打印调试信息
-        print("[WebsiteListView] 当前分组: \(selectedGroup?.uuidString ?? "默认分组")")
-        print("[WebsiteListView] 分组中的网站数量: \(websites.count)")
-        print("[WebsiteListView] 所有网站数量: \(websiteManager.websites.count)")
-        print("[WebsiteListView] 分组列表:")
-        for group in groupManager.groups {
-            print("- \(group.name): \(group.websiteIds.count) 个网站")
-            print("  网站IDs: \(group.websiteIds)")
-        }
-        
-        // 应用搜索过滤
-        if searchText.isEmpty {
-            return websites.sorted(by: { $0.name < $1.name })
-        }
-        return websites.filter { website in
-            website.name.localizedCaseInsensitiveContains(searchText) ||
-            website.url.localizedCaseInsensitiveContains(searchText)
-        }.sorted(by: { $0.name < $1.name })
-    }
-    
-    private func onGroupSelect(_ website: Website, groupId: UUID) {
-        if groupManager.groups.first(where: { $0.id == groupId })?.websiteIds.contains(website.id) ?? false {
-            groupManager.removeWebsite(website.id, from: groupId)
-        } else {
-            groupManager.addWebsite(website.id, to: groupId)
-        }
+        return websites.sorted { $0.name < $1.name }
     }
     
     var body: some View {
@@ -73,9 +37,9 @@ struct WebsiteListView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         // 分组按钮
-                        ForEach(groupManager.groups) { group in
+                        ForEach(websiteManager.groups) { group in
                             Button(action: { selectedGroup = group.id }) {
-                                Text("\(group.name) (\(group.websiteIds.count))")
+                                Text("\(group.name) (\(websiteManager.getWebsites(mode: .all, groupId: group.id).count))")
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
@@ -87,22 +51,23 @@ struct WebsiteListView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal)
                 }
                 
-                Spacer(minLength: 0)
+                Divider()
+                    .padding(.horizontal, 8)
                 
-                // 分组管理按钮
+                // 管理按钮
                 Button(action: { showingGroupManagement = true }) {
                     Image(systemName: "folder.badge.gearshape")
-                        .foregroundColor(.blue)
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, 16)
+                .padding(.trailing, 12)
             }
+            .frame(height: 36)
             .padding(.vertical, 8)
             
-            // 搜索框和添加按钮
+            // 搜索和工具栏
             HStack {
                 HStack {
                     Image(systemName: "magnifyingglass")
@@ -118,13 +83,15 @@ struct WebsiteListView: View {
                     }
                 }
                 
-                Button(action: { showingAddSheet = true }) {
-                    Image(systemName: "plus")
-                }
-                .buttonStyle(.borderedProminent)
+                Spacer()
                 
                 Button(action: { showingImportSheet = true }) {
                     Image(systemName: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderedProminent)
+                
+                Button(action: { showingAddSheet = true }) {
+                    Image(systemName: "plus")
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -135,28 +102,32 @@ struct WebsiteListView: View {
             // 网站列表
             List {
                 ForEach(filteredWebsites) { website in
-                    WebsiteRow(website: website,
-                             isEditing: editingWebsite?.id == website.id,
-                             onEdit: {
-                        editingWebsite = website
-                    },
-                             onSave: { url, name in
-                        var updatedWebsite = website
-                        updatedWebsite.url = url
-                        updatedWebsite.name = name
-                        websiteManager.updateWebsite(updatedWebsite)
-                        editingWebsite = nil
-                    },
-                             onCancel: {
-                        editingWebsite = nil
-                    },
-                             onDelete: {
-                        websiteManager.deleteWebsite(website)
-                    },
-                             onGroupSelect: { _, groupId in
-                        onGroupSelect(website, groupId: groupId)
-                    },
-                             isVisible: visibleRows.contains(website.id))
+                    WebsiteRow(
+                        website: website,
+                        isEditing: editingWebsite?.id == website.id,
+                        onEdit: { editingWebsite = website },
+                        onSave: { name, url in
+                            var updatedWebsite = website
+                            updatedWebsite.url = url
+                            updatedWebsite.name = name
+                            websiteManager.updateWebsite(updatedWebsite)
+                            editingWebsite = nil
+                        },
+                        onCancel: {
+                            editingWebsite = nil
+                        },
+                        onDelete: {
+                            websiteManager.deleteWebsite(website)
+                        },
+                        onGroupSelect: { website, groupId in
+                            if website.groupIds.contains(groupId) {
+                                websiteManager.removeWebsiteFromGroup(website.id, groupId: groupId)
+                            } else {
+                                websiteManager.addWebsiteToGroup(website.id, groupId: groupId)
+                            }
+                        },
+                        isVisible: visibleRows.contains(website.id)
+                    )
                     .id(website.id)
                     .onAppear {
                         visibleRows.insert(website.id)
@@ -172,6 +143,10 @@ struct WebsiteListView: View {
             AddWebsiteView { url, name in
                 let website = Website(url: url, name: name)
                 websiteManager.addWebsite(website)
+                // 添加到当前选中的分组
+                if let groupId = selectedGroup {
+                    websiteManager.addWebsiteToGroup(website.id, groupId: groupId)
+                }
                 showingAddSheet = false
             }
         }
@@ -182,43 +157,9 @@ struct WebsiteListView: View {
             ImportWebsitesView()
         }
         .onAppear {
-            print("[WebsiteListView] 视图加载")
-            // 如果没有任何分组，创建默认分组
-            if groupManager.groups.isEmpty {
-                print("[WebsiteListView] 创建默认分组")
-                groupManager.addGroup(name: "常用")
-            }
-            
-            // 清理不存在的网站ID
-            for group in groupManager.groups {
-                let validWebsiteIds = group.websiteIds.filter { websiteId in
-                    websiteManager.websites.contains { $0.id == websiteId }
-                }
-                if validWebsiteIds.count != group.websiteIds.count {
-                    print("[WebsiteListView] 清理分组'\(group.name)'中不存在的网站ID")
-                    print("- 原有网站IDs: \(group.websiteIds)")
-                    print("- 有效网站IDs: \(validWebsiteIds)")
-                    var updatedGroup = group
-                    updatedGroup.websiteIds = validWebsiteIds
-                    groupManager.updateGroup(updatedGroup)
-                }
-            }
-            
             // 如果没有选中分组，选中第一个分组
             if selectedGroup == nil {
-                print("[WebsiteListView] 选择默认分组")
-                selectedGroup = groupManager.groups.first?.id
-            }
-            
-            // 打印当前状态
-            print("[WebsiteListView] 当前状态:")
-            print("- 分组数量: \(groupManager.groups.count)")
-            print("- 网站数量: \(websiteManager.websites.count)")
-            for group in groupManager.groups {
-                print("- 分组 '\(group.name)':")
-                print("  - ID: \(group.id)")
-                print("  - 网站数量: \(group.websiteIds.count)")
-                print("  - 网站IDs: \(group.websiteIds)")
+                selectedGroup = websiteManager.groups.first?.id
             }
         }
     }
@@ -237,13 +178,13 @@ struct WebsiteRow: View {
     let onGroupSelect: (Website, UUID) -> Void
     let isVisible: Bool
     
-    @StateObject private var groupManager = WebsiteGroupManager.shared
+    @StateObject private var websiteManager = WebsiteManager.shared
     @ObservedObject private var iconManager = WebIconManager.shared
     @State private var editUrl: String = ""
     @State private var editName: String = ""
     
     private var websiteGroups: [WebsiteGroup] {
-        groupManager.getGroups(for: website.id)
+        websiteManager.groups.filter { website.groupIds.contains($0.id) }
     }
     
     var body: some View {
@@ -269,98 +210,89 @@ struct WebsiteRow: View {
                 // 编辑模式
                 VStack(alignment: .leading, spacing: 8) {
                     TextField("网站名称", text: $editName)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .textFieldStyle(.roundedBorder)
                     TextField("网站地址", text: $editUrl)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
-                
-                HStack {
-                    Button("保存") {
-                        onSave(editUrl, editName)
-                    }
-                    .buttonStyle(.borderedProminent)
+                        .textFieldStyle(.roundedBorder)
                     
-                    Button("取消") {
-                        onCancel()
+                    HStack {
+                        Button("保存") {
+                            onSave(editName, editUrl)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        
+                        Button("取消") {
+                            onCancel()
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
+                }
+                .onAppear {
+                    editName = website.name
+                    editUrl = website.url
                 }
             } else {
                 // 显示模式
-                VStack(alignment: .leading) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(website.name)
-                        .font(.headline)
+                        .lineLimit(1)
                     Text(website.url)
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
                 
                 Spacer()
                 
-                HStack {
-                    // 分组菜单
-                    Menu {
-                        if let currentGroup = websiteGroups.first {
-                            Text("当前分组：\(currentGroup.name)")
-                                .foregroundColor(.secondary)
-                            
-                            Divider()
-                            
-                            ForEach(groupManager.groups.filter { $0.id != currentGroup.id }) { group in
-                                Button(action: {
-                                    onGroupSelect(website, group.id)
-                                }) {
-                                    Label("移动到「\(group.name)」", systemImage: "arrow.right.circle")
-                                }
-                            }
-                        } else {
-                            Text("未分组")
-                                .foregroundColor(.secondary)
-                            
-                            Divider()
-                            
-                            ForEach(groupManager.groups) { group in
-                                Button(action: {
-                                    onGroupSelect(website, group.id)
-                                }) {
-                                    Label("移动到「\(group.name)」", systemImage: "arrow.right.circle")
-                                }
+                // 分组菜单
+                Menu {
+                    if let currentGroup = websiteGroups.first {
+                        Text("当前分组：\(currentGroup.name)")
+                            .foregroundColor(.secondary)
+                        
+                        Divider()
+                        
+                        ForEach(websiteManager.groups.filter { $0.id != currentGroup.id }) { group in
+                            Button(action: {
+                                onGroupSelect(website, group.id)
+                            }) {
+                                Label("移动到「\(group.name)」", systemImage: "arrow.right.circle")
                             }
                         }
-                    } label: {
-                        HStack {
-                            if let group = websiteGroups.first {
-                                Text(group.name)
-                            } else {
-                                Text("未分组")
-                                    .foregroundColor(.secondary)
+                    } else {
+                        Text("未分组")
+                            .foregroundColor(.secondary)
+                        
+                        Divider()
+                        
+                        ForEach(websiteManager.groups) { group in
+                            Button(action: {
+                                onGroupSelect(website, group.id)
+                            }) {
+                                Label("移动到「\(group.name)」", systemImage: "arrow.right.circle")
                             }
-                            Image(systemName: "chevron.down")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .cornerRadius(6)
                     }
-                    .menuStyle(.borderlessButton)
-                    .frame(width: 150)
-                    
-                    Button(action: {
-                        editUrl = website.url
-                        editName = website.name
-                        onEdit()
-                    }) {
-                        Image(systemName: "pencil")
-                    }
-                    .buttonStyle(.borderless)
-                    
-                    Button(action: onDelete) {
-                        Image(systemName: "trash")
-                    }
-                    .buttonStyle(.borderless)
+                } label: {
+                    Image(systemName: "folder")
                 }
+                .menuStyle(.borderlessButton)
+                
+                // 快捷键标识
+                if website.shortcutKey != nil {
+                    Image(systemName: "command")
+                        .foregroundColor(.secondary)
+                }
+                
+                // 操作按钮
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                }
+                .buttonStyle(.borderless)
+                
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
             }
         }
         .padding(.vertical, 4)
@@ -379,7 +311,7 @@ struct WebsiteRow: View {
  */
 struct AddWebsiteView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var groupManager = WebsiteGroupManager.shared
+    @StateObject private var websiteManager = WebsiteManager.shared
     @State private var url = ""
     @State private var name = ""
     @State private var icon: NSImage?
@@ -395,7 +327,7 @@ struct AddWebsiteView: View {
             // 分组选择
             HStack {
                 Menu {
-                    ForEach(groupManager.groups) { group in
+                    ForEach(websiteManager.groups) { group in
                         Button(action: {
                             selectedGroupId = group.id
                         }) {
@@ -415,7 +347,7 @@ struct AddWebsiteView: View {
                 } label: {
                     HStack {
                         Text(selectedGroupId.flatMap { id in
-                            groupManager.groups.first { $0.id == id }?.name
+                            websiteManager.groups.first { $0.id == id }?.name
                         } ?? "选择分组")
                         Image(systemName: "chevron.down")
                             .font(.caption)
@@ -464,11 +396,11 @@ struct AddWebsiteView: View {
                 
                 Button("添加") {
                     let website = Website(url: url, name: name)
-                    WebsiteManager.shared.addWebsite(website)
+                    websiteManager.addWebsite(website)
                     // 添加到选中的分组，如果没有选择分组则添加到默认分组
-                    let groupId = selectedGroupId ?? groupManager.groups.first?.id
+                    let groupId = selectedGroupId ?? websiteManager.groups.first?.id
                     if let groupId = groupId {
-                        groupManager.addWebsite(website.id, to: groupId)
+                        websiteManager.addWebsiteToGroup(website.id, groupId: groupId)
                     }
                     onAdd(url, name)
                     dismiss()
@@ -482,7 +414,7 @@ struct AddWebsiteView: View {
         .onAppear {
             // 默认选中第一个分组（常用）
             if selectedGroupId == nil {
-                selectedGroupId = groupManager.groups.first?.id
+                selectedGroupId = websiteManager.groups.first?.id
             }
         }
         .sheet(isPresented: $showingGroupManagement) {

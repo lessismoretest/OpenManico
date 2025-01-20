@@ -7,93 +7,42 @@ import AppKit
 struct DockIconsView: View {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var hotKeyManager = HotKeyManager.shared
-    @StateObject private var webShortcutManager = HotKeyManager.shared.webShortcutManager
+    @StateObject private var websiteManager = WebsiteManager.shared
     @State private var webIcons: [UUID: NSImage] = [:]
     @State private var installedApps: [AppInfo] = []
     @State private var selectedAppGroup: UUID? = nil
     @State private var selectedWebGroup: UUID? = nil
     @State private var isScanning = false
     
-    private var switcherApps: [AppInfo] {
-        let workspace = NSWorkspace.shared
-        let frontmost = workspace.frontmostApplication
-        let menuBarOwner = workspace.menuBarOwningApplication
-        
-        return workspace.runningApplications
-            .filter { $0.activationPolicy == .regular }
-            .sorted { (app1: NSRunningApplication, app2: NSRunningApplication) in
-                // 前台应用优先
-                if app1 == frontmost { return true }
-                if app2 == frontmost { return false }
-                // 菜单栏应用次之
-                if app1 == menuBarOwner { return true }
-                if app2 == menuBarOwner { return false }
-                // 其他应用按启动时间排序
-                guard let date1 = app1.launchDate,
-                      let date2 = app2.launchDate else {
-                    return false
-                }
-                return date1 > date2
-            }
-            .compactMap { app in
-                guard let bundleId = app.bundleIdentifier,
-                      let name = app.localizedName,
-                      let icon = app.icon else {
-                    return nil
-                }
-                return AppInfo(bundleId: bundleId, name: name, icon: icon, url: app.bundleURL)
-            }
-    }
-    
-    private var runningApps: [AppInfo] {
-        let workspace = NSWorkspace.shared
-        return workspace.runningApplications
-            .filter { $0.activationPolicy == .regular }
-            .compactMap { app in
-                guard let bundleId = app.bundleIdentifier,
-                      let name = app.localizedName,
-                      let icon = app.icon else {
-                    return nil
-                }
-                return AppInfo(bundleId: bundleId, name: name, icon: icon, url: app.bundleURL)
-            }
-            .sorted { $0.name < $1.name }
-    }
-    
-    private var groupedSwitcherApps: [AppInfo] {
-        guard let selectedGroupId = selectedAppGroup,
-              let selectedGroup = AppGroupManager.shared.groups.first(where: { $0.id == selectedGroupId }) else {
-            return switcherApps
-        }
-        
-        return switcherApps.filter { app in
-            selectedGroup.apps.contains(where: { $0.bundleId == app.bundleId })
-        }
-    }
-    
     var body: some View {
         VStack(spacing: 0) {
-            TopToolbarView(
-                appDisplayMode: $settings.appDisplayMode,
-                selectedAppGroup: $selectedAppGroup,
-                installedApps: installedApps,
-                runningApps: runningApps,
-                shortcuts: settings.shortcuts
-            )
+            if settings.showAppsInFloatingWindow {
+                TopToolbarView(
+                    appDisplayMode: $settings.appDisplayMode,
+                    selectedAppGroup: $selectedAppGroup,
+                    installedApps: installedApps,
+                    runningApps: runningApps,
+                    shortcuts: settings.shortcuts
+                )
+            }
             
             // 应用图标列表
-            DockAppListView(
-                appDisplayMode: settings.appDisplayMode,
-                installedApps: installedApps,
-                runningApps: runningApps,
-                shortcuts: settings.shortcuts,
-                selectedAppGroup: selectedAppGroup
-            )
+            if settings.showAppsInFloatingWindow {
+                DockAppListView(
+                    appDisplayMode: settings.appDisplayMode,
+                    installedApps: installedApps,
+                    runningApps: runningApps,
+                    shortcuts: settings.shortcuts,
+                    selectedAppGroup: selectedAppGroup
+                )
+            }
             
             // 网站快捷键图标
             if settings.showWebShortcutsInFloatingWindow {
-                Divider()
-                    .background(Color.white.opacity(0.3))
+                if settings.showDivider {
+                    Divider()
+                        .background(Color.white.opacity(settings.dividerOpacity))
+                }
                 
                 WebShortcutToolbarView(
                     websiteDisplayMode: $settings.websiteDisplayMode,
@@ -102,7 +51,6 @@ struct DockIconsView: View {
                 
                 WebShortcutListView(
                     websiteDisplayMode: settings.websiteDisplayMode,
-                    webShortcutManager: webShortcutManager,
                     selectedWebGroup: selectedWebGroup,
                     webIcons: webIcons,
                     onWebIconsUpdate: { newIcons in
@@ -115,11 +63,11 @@ struct DockIconsView: View {
         .padding(16)
         .background {
             if settings.useBlurEffect {
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: settings.floatingWindowCornerRadius)
                     .fill(.ultraThinMaterial)
                     .blur(radius: settings.blurRadius)
             } else {
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: settings.floatingWindowCornerRadius)
                     .fill(Color.black.opacity(settings.floatingWindowOpacity))
             }
         }
@@ -130,12 +78,12 @@ struct DockIconsView: View {
             // 预加载所有网站图标
             if settings.showWebShortcutsInFloatingWindow {
                 print("[DockIconsView] 🌐 开始加载网站图标")
-                print("[DockIconsView] 📊 当前网站总数: \(WebsiteManager.shared.websites.count)")
+                print("[DockIconsView] 📊 当前网站总数: \(websiteManager.websites.count)")
                 print("[DockIconsView] 🗂 已缓存图标数: \(WebIconManager.shared.getCachedIconCount())")
                 
                 Task {
                     let iconLoadStart = Date()
-                    await WebIconManager.shared.preloadIcons(for: WebsiteManager.shared.websites)
+                    await WebIconManager.shared.preloadIcons(for: websiteManager.websites)
                     let iconLoadEnd = Date()
                     let iconLoadTime = iconLoadEnd.timeIntervalSince(iconLoadStart)
                     print("[DockIconsView] ⏱️ 网站图标加载耗时: \(String(format: "%.2f", iconLoadTime))秒")
@@ -159,12 +107,19 @@ struct DockIconsView: View {
         }
     }
     
-    private func loadWebIcon(for shortcut: WebShortcut) {
-        shortcut.fetchIcon { fetchedIcon in
-            if let icon = fetchedIcon {
-                webIcons[shortcut.websiteId] = icon
+    private var runningApps: [AppInfo] {
+        let workspace = NSWorkspace.shared
+        return workspace.runningApplications
+            .filter { $0.activationPolicy == .regular }
+            .compactMap { app in
+                guard let bundleId = app.bundleIdentifier,
+                      let name = app.localizedName,
+                      let icon = app.icon else {
+                    return nil
+                }
+                return AppInfo(bundleId: bundleId, name: name, icon: icon, url: app.bundleURL)
             }
-        }
+            .sorted { $0.name < $1.name }
     }
     
     private func scanInstalledApps() {
@@ -217,24 +172,6 @@ struct DockIconsView: View {
         
         print("在 \(url.path) 中找到 \(apps.count) 个应用")
         return apps
-    }
-    
-    // 根据选中的分组过滤应用列表
-    private var filteredInstalledApps: [AppInfo] {
-        // 如果没有选中分组，返回所有应用
-        guard let selectedGroupId = selectedAppGroup else {
-            return installedApps
-        }
-        
-        // 查找选中的分组
-        guard let selectedGroup = AppGroupManager.shared.groups.first(where: { $0.id == selectedGroupId }) else {
-            return installedApps
-        }
-        
-        // 过滤应用列表
-        return installedApps.filter { app in
-            selectedGroup.apps.contains(where: { $0.bundleId == app.bundleId })
-        }
     }
 }
 
@@ -415,10 +352,81 @@ private struct DockAppListView: View {
     }
 }
 
+// MARK: - 网站快捷键列表视图
+private struct WebShortcutListView: View {
+    @StateObject private var settings = AppSettings.shared
+    @StateObject private var websiteManager = WebsiteManager.shared
+    @StateObject private var iconManager = WebIconManager.shared
+    let websiteDisplayMode: WebsiteDisplayMode
+    let selectedWebGroup: UUID?
+    let webIcons: [UUID: NSImage]
+    let onWebIconsUpdate: ([UUID: NSImage]) -> Void
+    
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: [
+                GridItem(.adaptive(minimum: settings.webIconSize + 20), spacing: 16)
+            ], spacing: 16) {
+                let websites = websiteManager.getWebsites(mode: websiteDisplayMode, groupId: selectedWebGroup)
+                ForEach(websites) { website in
+                    WebsiteIconView(website: website)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .padding(.top, 8)
+    }
+}
+
+// MARK: - 网站图标视图
+private struct WebsiteIconView: View {
+    @StateObject private var settings = AppSettings.shared
+    @StateObject private var iconManager = WebIconManager.shared
+    let website: Website
+    
+    var body: some View {
+        IconView(
+            icon: iconManager.icon(for: website.id) ?? NSImage(systemSymbolName: "globe", accessibilityDescription: nil)!,
+            size: settings.webIconSize,
+            label: {
+                VStack(spacing: 2) {
+                    if settings.showWebsiteName {
+                        Text(website.name)
+                            .font(.system(size: settings.websiteNameFontSize))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .frame(width: 60)
+                    }
+                }
+            },
+            onTap: {
+                if let url = URL(string: website.url) {
+                    NSWorkspace.shared.open(url)
+                }
+            },
+            shortcutKey: website.shortcutKey,
+            isWebsite: true
+        )
+        .onAppear {
+            Task {
+                await website.fetchIcon { icon in
+                    if let icon = icon {
+                        Task {
+                            await iconManager.setIcon(icon, for: website.id)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - 网站工具栏视图
 private struct WebShortcutToolbarView: View {
     @Binding var websiteDisplayMode: WebsiteDisplayMode
     @Binding var selectedWebGroup: UUID?
+    @StateObject private var websiteManager = WebsiteManager.shared
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -477,10 +485,10 @@ private struct WebShortcutToolbarView: View {
                     }
                 }
                 
-                // 网站分组按钮
-                ForEach(WebsiteGroupManager.shared.groups) { group in
+                // 分组按钮
+                ForEach(websiteManager.groups) { group in
                     Button(action: {}) {
-                        Text("\(group.name) (\(group.websiteIds.count))")
+                        Text("\(group.name) (\(websiteManager.getWebsites(mode: .all, groupId: group.id).count))")
                             .foregroundColor(.white)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -503,140 +511,6 @@ private struct WebShortcutToolbarView: View {
     }
 }
 
-// MARK: - 网站列表视图
-private struct WebShortcutListView: View {
-    @StateObject private var settings = AppSettings.shared
-    @StateObject private var hotKeyManager = HotKeyManager.shared
-    @StateObject private var iconManager = WebIconManager.shared
-    let websiteDisplayMode: WebsiteDisplayMode
-    let webShortcutManager: WebShortcutManager
-    let selectedWebGroup: UUID?
-    let webIcons: [UUID: NSImage]
-    let onWebIconsUpdate: ([UUID: NSImage]) -> Void
-    
-    var body: some View {
-        ScrollView {
-            LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: settings.webIconSize + 20), spacing: 16)
-            ], spacing: 16) {
-                let shortcuts = webShortcutManager.shortcuts.sorted(by: { $0.key < $1.key })
-                let displayShortcuts = websiteDisplayMode == .shortcutOnly ? shortcuts : {
-                    let websites = if let groupId = selectedWebGroup {
-                        WebsiteManager.shared.websites.filter { website in
-                            WebsiteGroupManager.shared.groups.first(where: { $0.id == groupId })?.websiteIds.contains(website.id) ?? false
-                        }
-                    } else {
-                        WebsiteManager.shared.websites
-                    }
-                    return websites.map { website in
-                        if let shortcut = shortcuts.first(where: { $0.websiteId == website.id }) {
-                            return shortcut
-                        } else {
-                            return WebShortcut(key: "", websiteId: website.id)
-                        }
-                    }
-                }()
-                
-                ForEach(Array(displayShortcuts.enumerated()), id: \.element.id) { index, shortcut in
-                    if !shortcut.key.isEmpty || websiteDisplayMode == .all {
-                        WebsiteIconView(
-                            shortcut: shortcut,
-                            icon: iconManager.icon(for: shortcut.websiteId),
-                            onIconLoad: { icon in
-                                var newIcons = webIcons
-                                newIcons[shortcut.websiteId] = icon
-                                onWebIconsUpdate(newIcons)
-                            }
-                        )
-                    }
-                }
-            }
-            .padding(.horizontal, 8)
-        }
-    }
-}
-
-// MARK: - 网站图标视图
-private struct WebsiteIconView: View {
-    @StateObject private var settings = AppSettings.shared
-    @StateObject private var hotKeyManager = HotKeyManager.shared
-    let shortcut: WebShortcut
-    let icon: NSImage?
-    let onIconLoad: (NSImage) -> Void
-    
-    var body: some View {
-        if let icon = icon {
-            IconView(
-                icon: icon,
-                size: settings.webIconSize,
-                label: {
-                    if !shortcut.key.isEmpty {
-                        Text("⌘\(shortcut.key)")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white)
-                    } else if settings.websiteDisplayMode == .all && settings.showWebsiteName {
-                        if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId) {
-                            Text(website.name)
-                                .font(.system(size: settings.websiteNameFontSize))
-                                .foregroundColor(.white)
-                                .lineLimit(1)
-                                .frame(width: 60)
-                        }
-                    }
-                },
-                onHover: { hovering in
-                    if hovering && settings.openWebOnHover {
-                        if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId),
-                           let url = URL(string: website.url) {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
-                },
-                onTap: {
-                    if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId),
-                       let url = URL(string: website.url) {
-                        NSWorkspace.shared.open(url)
-                        if !hotKeyManager.isOptionKeyPressed {
-                            DockIconsWindowController.shared.hideWindow()
-                        }
-                    }
-                }
-            )
-        } else {
-            IconView(
-                icon: NSImage(systemSymbolName: "globe", accessibilityDescription: nil) ?? NSImage(),
-                size: settings.webIconSize,
-                label: {
-                    if !shortcut.key.isEmpty {
-                        Text("⌘\(shortcut.key)")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white)
-                    } else if settings.websiteDisplayMode == .all && settings.showWebsiteName {
-                        if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId) {
-                            Text(website.name)
-                                .font(.system(size: settings.websiteNameFontSize))
-                                .foregroundColor(.white)
-                                .lineLimit(1)
-                                .frame(width: 60)
-                        }
-                    }
-                }
-            )
-            .onAppear {
-                if let website = WebsiteManager.shared.findWebsite(id: shortcut.websiteId) {
-                    Task {
-                        await website.fetchIcon { fetchedIcon in
-                            if let icon = fetchedIcon {
-                                onIconLoad(icon)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 struct IconView<Label: View>: View {
     @StateObject private var settings = AppSettings.shared
     let icon: NSImage
@@ -644,6 +518,8 @@ struct IconView<Label: View>: View {
     let label: Label
     let onHover: ((Bool) -> Void)?
     let onTap: (() -> Void)?
+    let shortcutKey: String?
+    let isWebsite: Bool
     @State private var isHovering = false
     
     init(
@@ -651,37 +527,87 @@ struct IconView<Label: View>: View {
         size: CGFloat,
         @ViewBuilder label: () -> Label,
         onHover: ((Bool) -> Void)? = nil,
-        onTap: (() -> Void)? = nil
+        onTap: (() -> Void)? = nil,
+        shortcutKey: String? = nil,
+        isWebsite: Bool = false
     ) {
         self.icon = icon
         self.size = size
         self.label = label()
         self.onHover = onHover
         self.onTap = onTap
+        self.shortcutKey = shortcutKey
+        self.isWebsite = isWebsite
     }
     
     var body: some View {
         VStack(spacing: settings.iconSpacing) {
-            Image(nsImage: icon)
-                .resizable()
-                .frame(width: size, height: size)
-                .cornerRadius(settings.iconCornerRadius)
-                .overlay(
-                    RoundedRectangle(cornerRadius: settings.iconCornerRadius)
-                        .stroke(settings.iconBorderColor, lineWidth: isHovering ? settings.iconBorderWidth : 0)
-                )
-                .shadow(radius: settings.useIconShadow ? settings.iconShadowRadius : 0)
-                .scaleEffect(settings.useHoverAnimation && isHovering ? settings.hoverScale : 1.0)
-                .animation(.easeInOut(duration: settings.hoverAnimationDuration), value: isHovering)
-                .onTapGesture {
-                    onTap?()
+            ZStack(alignment: .center) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: size, height: size)
+                    .cornerRadius(settings.iconCornerRadius)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: settings.iconCornerRadius)
+                            .stroke(settings.iconBorderColor, lineWidth: isHovering ? settings.iconBorderWidth : 0)
+                    )
+                    .shadow(radius: settings.useIconShadow ? settings.iconShadowRadius : 0)
+                    .scaleEffect(settings.useHoverAnimation && isHovering ? settings.hoverScale : 1.0)
+                    .animation(.easeInOut(duration: settings.hoverAnimationDuration), value: isHovering)
+                
+                if let key = shortcutKey {
+                    if isWebsite && settings.showWebShortcutLabel {
+                        let labelOffset = getLabelOffset(position: settings.webShortcutLabelPosition)
+                        Text("⌘\(key)")
+                            .font(.system(size: settings.webShortcutLabelFontSize, weight: .medium))
+                            .foregroundColor(settings.webShortcutLabelTextColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(settings.webShortcutLabelBackgroundColor)
+                            )
+                            .offset(x: labelOffset.x + settings.webShortcutLabelOffsetX,
+                                   y: labelOffset.y + settings.webShortcutLabelOffsetY)
+                    } else if !isWebsite && settings.showAppShortcutLabel {
+                        let labelOffset = getLabelOffset(position: settings.appShortcutLabelPosition)
+                        Text("⌘\(key)")
+                            .font(.system(size: settings.appShortcutLabelFontSize, weight: .medium))
+                            .foregroundColor(settings.appShortcutLabelTextColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(settings.appShortcutLabelBackgroundColor)
+                            )
+                            .offset(x: labelOffset.x + settings.appShortcutLabelOffsetX,
+                                   y: labelOffset.y + settings.appShortcutLabelOffsetY)
+                    }
                 }
+            }
+            .onTapGesture {
+                onTap?()
+            }
             
             label
         }
         .onHover { hovering in
             isHovering = hovering
             onHover?(hovering)
+        }
+    }
+    
+    private func getLabelOffset(position: ShortcutLabelPosition) -> (x: CGFloat, y: CGFloat) {
+        let padding: CGFloat = 4
+        switch position {
+        case .top:
+            return (x: 0, y: -size/2 - padding)
+        case .bottom:
+            return (x: 0, y: size/2 + padding)
+        case .left:
+            return (x: -size/2 - padding, y: 0)
+        case .right:
+            return (x: size/2 + padding, y: 0)
         }
     }
 }
@@ -707,7 +633,9 @@ struct AppIconView: View {
                 if let url = app.url {
                     NSWorkspace.shared.open(url)
                 }
-            }
+            },
+            shortcutKey: settings.shortcuts.first(where: { $0.bundleIdentifier == app.bundleId })?.key,
+            isWebsite: false
         )
     }
 }

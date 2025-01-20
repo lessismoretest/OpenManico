@@ -1,129 +1,100 @@
- import SwiftUI
+import SwiftUI
+import UniformTypeIdentifiers
 
 /**
  * 导入设置视图
  */
 struct ImportSettingsView: View {
-    @ObservedObject private var appSettings = AppSettings.shared
-    @ObservedObject private var webShortcutManager = HotKeyManager.shared.webShortcutManager
     @Environment(\.dismiss) private var dismiss
-    
-    let importData: ExportData
-    @State private var selectedAppScenes: Set<UUID> = []
-    @State private var selectedWebScenes: Set<UUID> = []
+    @StateObject private var websiteManager = WebsiteManager.shared
+    @State private var importText: String = ""
+    @State private var importResult: String = ""
+    @State private var showingError = false
+    @State private var errorMessage = ""
     
     var body: some View {
-        VStack(spacing: 20) {
-            Text("导入场景")
+        VStack {
+            Text("请输入要导入的网站数据")
                 .font(.headline)
             
-            VStack(alignment: .leading, spacing: 16) {
-                if let appScenes = importData.appScenes, !appScenes.isEmpty {
-                    // 应用场景选择
-                    GroupBox("应用场景") {
-                        ScrollView {
-                            LazyVStack(alignment: .leading) {
-                                ForEach(appScenes) { scene in
-                                    SceneToggleRow(
-                                        name: scene.name,
-                                        isSelected: selectedAppScenes.contains(scene.id),
-                                        onToggle: { isSelected in
-                                            if isSelected {
-                                                selectedAppScenes.insert(scene.id)
-                                            } else {
-                                                selectedAppScenes.remove(scene.id)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                            .padding(8)
-                        }
-                        .frame(maxHeight: 200)
-                    }
-                }
-                
-                if let webScenes = importData.webScenes, !webScenes.isEmpty {
-                    // 网站场景选择
-                    GroupBox("网站场景") {
-                        ScrollView {
-                            LazyVStack(alignment: .leading) {
-                                ForEach(webScenes) { scene in
-                                    SceneToggleRow(
-                                        name: scene.name,
-                                        isSelected: selectedWebScenes.contains(scene.id),
-                                        onToggle: { isSelected in
-                                            if isSelected {
-                                                selectedWebScenes.insert(scene.id)
-                                            } else {
-                                                selectedWebScenes.remove(scene.id)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                            .padding(8)
-                        }
-                        .frame(maxHeight: 200)
-                    }
-                }
+            TextEditor(text: $importText)
+                .font(.system(.body, design: .monospaced))
+                .frame(height: 200)
+            
+            if !importResult.isEmpty {
+                Text(importResult)
+                    .foregroundColor(.secondary)
             }
             
             HStack {
-                Button("全选") {
-                    if let appScenes = importData.appScenes {
-                        selectedAppScenes = Set(appScenes.map { $0.id })
-                    }
-                    if let webScenes = importData.webScenes {
-                        selectedWebScenes = Set(webScenes.map { $0.id })
-                    }
-                }
-                
-                Button("取消全选") {
-                    selectedAppScenes.removeAll()
-                    selectedWebScenes.removeAll()
-                }
-                
-                Spacer()
-                
                 Button("取消") {
                     dismiss()
                 }
                 
                 Button("导入") {
-                    importSelectedScenes()
-                    dismiss()
+                    importWebsites()
                 }
-                .disabled(selectedAppScenes.isEmpty && selectedWebScenes.isEmpty)
+                .keyboardShortcut(.defaultAction)
             }
             .padding(.top)
         }
-        .padding()
         .frame(width: 400)
+        .padding()
+        .alert("导入失败", isPresented: $showingError) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(errorMessage)
+        }
     }
     
-    private func importSelectedScenes() {
-        // 导入选中的应用场景
-        if let appScenes = importData.appScenes {
-            let selectedScenes = appScenes.filter { selectedAppScenes.contains($0.id) }
-            if !selectedScenes.isEmpty {
-                // 将选中的场景添加到现有场景中
-                var currentScenes = appSettings.scenes
-                currentScenes.append(contentsOf: selectedScenes)
-                appSettings.scenes = currentScenes
-            }
+    private func importWebsites() {
+        guard !importText.isEmpty else {
+            showError("请输入要导入的数据")
+            return
         }
         
-        // 导入选中的网站场景
-        if let webScenes = importData.webScenes {
-            let selectedScenes = webScenes.filter { selectedWebScenes.contains($0.id) }
-            if !selectedScenes.isEmpty {
-                // 将选中的场景添加到现有场景中
-                var currentScenes = webShortcutManager.scenes
-                currentScenes.append(contentsOf: selectedScenes)
-                webShortcutManager.scenes = currentScenes
-                webShortcutManager.saveShortcuts()
+        guard let data = importText.data(using: .utf8) else {
+            showError("无法解析输入的数据")
+            return
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            let importedData = try decoder.decode(ImportData.self, from: data)
+            
+            // 导入分组
+            for group in importedData.groups {
+                websiteManager.addGroup(name: group.name)
             }
+            
+            // 导入网站
+            for website in importedData.websites {
+                websiteManager.addWebsite(website)
+            }
+            
+            importResult = "成功导入 \(importedData.websites.count) 个网站"
+            if !importedData.groups.isEmpty {
+                importResult += "，\(importedData.groups.count) 个分组"
+            }
+            
+            // 清空输入
+            importText = ""
+            
+        } catch {
+            showError("数据格式错误: \(error.localizedDescription)")
         }
     }
+    
+    private func showError(_ message: String) {
+        errorMessage = message
+        showingError = true
+    }
+}
+
+/**
+ * 导入数据结构
+ */
+struct ImportData: Codable {
+    let websites: [Website]
+    let groups: [WebsiteGroup]
 }

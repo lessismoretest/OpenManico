@@ -4,7 +4,7 @@ import SwiftUI
  * 分组管理视图
  */
 struct GroupManagementView: View {
-    @StateObject private var groupManager = WebsiteGroupManager.shared
+    @StateObject private var websiteManager = WebsiteManager.shared
     @Environment(\.dismiss) private var dismiss
     @State private var newGroupName = ""
     @State private var editingGroup: WebsiteGroup?
@@ -28,7 +28,7 @@ struct GroupManagementView: View {
             
             // 分组列表
             List {
-                ForEach(groupManager.groups) { group in
+                ForEach(websiteManager.groups) { group in
                     HStack {
                         // 拖动手柄
                         Image(systemName: "line.3.horizontal")
@@ -36,85 +36,72 @@ struct GroupManagementView: View {
                             .opacity(group.name == "常用" ? 0 : 0.5)
                         
                         if editingGroup?.id == group.id {
+                            // 编辑模式
                             TextField("分组名称", text: $editName)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .textFieldStyle(.roundedBorder)
                                 .onSubmit {
                                     if !editName.isEmpty {
                                         var updatedGroup = group
                                         updatedGroup.name = editName
-                                        groupManager.updateGroup(updatedGroup)
+                                        websiteManager.updateGroup(updatedGroup)
                                         editingGroup = nil
                                     }
                                 }
                         } else {
+                            // 显示模式
                             Text(group.name)
-                        }
-                        
-                        Spacer()
-                        
-                        if group.name != "常用" {
-                            // 编辑按钮
-                            Button(action: {
-                                editingGroup = group
-                                editName = group.name
-                            }) {
-                                Image(systemName: "pencil")
-                            }
-                            .buttonStyle(.borderless)
+                            Spacer()
+                            Text("\(websiteManager.getWebsites(mode: .all, groupId: group.id).count) 个网站")
+                                .foregroundColor(.secondary)
                             
-                            // 删除按钮
-                            Button(action: {
-                                // 获取要删除的分组中的所有网站ID
-                                let websiteIds = group.websiteIds
-                                // 删除所有网站
-                                for websiteId in websiteIds {
-                                    if let website = WebsiteManager.shared.findWebsite(id: websiteId) {
-                                        WebsiteManager.shared.deleteWebsite(website)
-                                    }
+                            if group.name != "常用" {
+                                Button(action: {
+                                    editingGroup = group
+                                    editName = group.name
+                                }) {
+                                    Image(systemName: "pencil")
                                 }
-                                // 删除分组
-                                groupManager.deleteGroup(group)
-                            }) {
-                                Image(systemName: "trash")
+                                .buttonStyle(.borderless)
+                                
+                                Button(action: {
+                                    websiteManager.deleteGroup(group)
+                                }) {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
                             }
-                            .buttonStyle(.borderless)
                         }
                     }
-                    .padding(.vertical, 4)
                 }
-                .onMove { source, destination in
-                    // 确保不移动"常用"分组
-                    if source.contains(0) {
-                        return
+                .onMove { from, to in
+                    var groups = websiteManager.groups
+                    groups.move(fromOffsets: from, toOffset: to)
+                    // 确保"常用"分组始终在第一位
+                    if let defaultGroupIndex = groups.firstIndex(where: { $0.name == "常用" }),
+                       defaultGroupIndex != 0 {
+                        groups.move(fromOffsets: IndexSet(integer: defaultGroupIndex), toOffset: 0)
                     }
                     // 更新分组顺序
-                    var groups = groupManager.groups
-                    groups.move(fromOffsets: source, toOffset: destination)
-                    groupManager.updateGroups(groups)
+                    websiteManager.groups = groups
                 }
             }
-            .listStyle(InsetListStyle())
             
             Divider()
             
-            // 添加分组
+            // 添加新分组
             HStack {
                 TextField("新分组名称", text: $newGroupName)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                
-                Button(action: {
+                    .textFieldStyle(.roundedBorder)
+                Button("添加") {
                     if !newGroupName.isEmpty {
-                        groupManager.addGroup(name: newGroupName)
+                        websiteManager.addGroup(name: newGroupName)
                         newGroupName = ""
                     }
-                }) {
-                    Image(systemName: "plus.circle.fill")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.borderedProminent)
                 .disabled(newGroupName.isEmpty)
             }
             .padding()
         }
-        .frame(width: 400, height: 500)
     }
 } 
