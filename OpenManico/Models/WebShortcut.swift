@@ -16,10 +16,12 @@ struct WebShortcut: Identifiable, Codable, Hashable {
     
     /// 获取网站图标
     func fetchIcon(completion: @escaping (NSImage?) -> Void) {
-        if let website = WebsiteManager.shared.findWebsite(id: websiteId) {
-            website.fetchIcon(completion: completion)
-        } else {
-            completion(nil)
+        Task {
+            if let website = WebsiteManager.shared.findWebsite(id: websiteId) {
+                await website.fetchIcon(completion: completion)
+            } else {
+                completion(nil)
+            }
         }
     }
     
