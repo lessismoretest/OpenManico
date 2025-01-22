@@ -6,30 +6,29 @@ import AppKit
  */
 struct DockIconsView: View {
     @StateObject private var settings = AppSettings.shared
-    @StateObject private var hotKeyManager = HotKeyManager.shared
     @StateObject private var websiteManager = WebsiteManager.shared
-    @State private var webIcons: [UUID: NSImage] = [:]
+    @StateObject private var iconManager = WebIconManager.shared
     @State private var installedApps: [AppInfo] = []
-    @State private var selectedAppGroup: UUID? = nil
-    @State private var selectedWebGroup: UUID? = nil
-    @State private var isScanning = false
+    @State private var runningApps: [AppInfo] = []
+    @State private var appDisplayMode: AppDisplayMode = .all
+    @State private var websiteDisplayMode: WebsiteDisplayMode = .shortcutOnly
+    @State private var selectedAppGroup: UUID?
+    @State private var selectedWebGroup: UUID?
+    @State private var webIcons: [UUID: NSImage] = [:]
     
     var body: some View {
         VStack(spacing: 0) {
             if settings.showAppsInFloatingWindow {
                 TopToolbarView(
-                    appDisplayMode: $settings.appDisplayMode,
+                    appDisplayMode: $appDisplayMode,
                     selectedAppGroup: $selectedAppGroup,
                     installedApps: installedApps,
                     runningApps: runningApps,
                     shortcuts: settings.shortcuts
                 )
-            }
-            
-            // 应用图标列表
-            if settings.showAppsInFloatingWindow {
+                
                 DockAppListView(
-                    appDisplayMode: settings.appDisplayMode,
+                    appDisplayMode: appDisplayMode,
                     installedApps: installedApps,
                     runningApps: runningApps,
                     shortcuts: settings.shortcuts,
@@ -37,20 +36,19 @@ struct DockIconsView: View {
                 )
             }
             
-            // 网站快捷键图标
             if settings.showWebShortcutsInFloatingWindow {
-                if settings.showDivider {
+                if settings.showDivider && settings.showAppsInFloatingWindow {
                     Divider()
-                        .background(Color.white.opacity(settings.dividerOpacity))
+                        .opacity(settings.dividerOpacity)
                 }
                 
                 WebShortcutToolbarView(
-                    websiteDisplayMode: $settings.websiteDisplayMode,
+                    websiteDisplayMode: $websiteDisplayMode,
                     selectedWebGroup: $selectedWebGroup
                 )
                 
                 WebShortcutListView(
-                    websiteDisplayMode: settings.websiteDisplayMode,
+                    websiteDisplayMode: websiteDisplayMode,
                     selectedWebGroup: selectedWebGroup,
                     webIcons: webIcons,
                     onWebIconsUpdate: { newIcons in
@@ -59,119 +57,104 @@ struct DockIconsView: View {
                 )
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(16)
-        .background {
-            if settings.useBlurEffect {
-                RoundedRectangle(cornerRadius: settings.floatingWindowCornerRadius)
-                    .fill(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: settings.floatingWindowCornerRadius))
-            } else {
-                RoundedRectangle(cornerRadius: settings.floatingWindowCornerRadius)
-                    .fill(Color.black.opacity(settings.floatingWindowOpacity))
-            }
-        }
         .onAppear {
-            let startTime = Date()
-            print("[DockIconsView] ⏱️ 开始加载视图: \(startTime)")
-            
-            // 预加载所有网站图标
-            if settings.showWebShortcutsInFloatingWindow {
-                print("[DockIconsView] 🌐 开始加载网站图标")
-                print("[DockIconsView] 📊 当前网站总数: \(websiteManager.websites.count)")
-                print("[DockIconsView] 🗂 已缓存图标数: \(WebIconManager.shared.getCachedIconCount())")
-                
-                Task {
-                    let iconLoadStart = Date()
-                    await WebIconManager.shared.preloadIcons(for: websiteManager.websites)
-                    let iconLoadEnd = Date()
-                    let iconLoadTime = iconLoadEnd.timeIntervalSince(iconLoadStart)
-                    print("[DockIconsView] ⏱️ 网站图标加载耗时: \(String(format: "%.2f", iconLoadTime))秒")
-                }
-            }
-            
-            if settings.appDisplayMode == .all {
-                print("[DockIconsView] 📱 开始扫描已安装应用")
-                scanInstalledApps()
-            }
-            
-            let endTime = Date()
-            let totalTime = endTime.timeIntervalSince(startTime)
-            print("[DockIconsView] ⏱️ 视图加载完成，总耗时: \(String(format: "%.2f", totalTime))秒")
+            appDisplayMode = settings.appDisplayMode
+            websiteDisplayMode = settings.websiteDisplayMode
+            scanApps()
+            startRunningAppsMonitor()
+            setupHotKeys()
         }
-        .onChange(of: settings.appDisplayMode) { newMode in
-            print("显示模式改变: \(newMode)")
-            if newMode == .all {
-                scanInstalledApps()
-            }
+        .onChange(of: appDisplayMode) { newMode in
+            settings.appDisplayMode = newMode
+        }
+        .onChange(of: websiteDisplayMode) { newMode in
+            settings.websiteDisplayMode = newMode
+        }
+        .onChange(of: settings.shortcuts) { _ in
+            // 当快捷键列表变化时，重新扫描应用和设置快捷键
+            scanApps()
+            setupHotKeys()
+        }
+        .onChange(of: websiteManager.websites) { _ in
+            // 当网站列表变化时，更新快捷键
+            setupHotKeys()
         }
     }
     
-    private var runningApps: [AppInfo] {
-        let workspace = NSWorkspace.shared
-        return workspace.runningApplications
+    private func setupHotKeys() {
+        // 更新所有快捷键
+        HotKeyManager.shared.updateShortcuts()
+    }
+    
+    private func startRunningAppsMonitor() {
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            updateRunningApps()
+        }
+        
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            updateRunningApps()
+        }
+        
+        updateRunningApps()
+    }
+    
+    private func updateRunningApps() {
+        runningApps = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
             .compactMap { app in
                 guard let bundleId = app.bundleIdentifier,
-                      let name = app.localizedName,
-                      let icon = app.icon else {
-                    return nil
-                }
-                return AppInfo(bundleId: bundleId, name: name, icon: icon, url: app.bundleURL)
+                      let url = app.bundleURL,
+                      let name = app.localizedName else { return nil }
+                let icon = NSWorkspace.shared.icon(forFile: url.path)
+                return AppInfo(bundleId: bundleId, name: name, icon: icon, url: url)
             }
-            .sorted { $0.name < $1.name }
     }
     
-    private func scanInstalledApps() {
-        print("开始扫描已安装应用...")
-        DispatchQueue.global(qos: .userInitiated).async {
-            // 扫描应用程序文件夹
-            let systemApps = getAppsInDirectory(at: URL(fileURLWithPath: "/Applications"))
-            let userApps = getAppsInDirectory(at: URL(fileURLWithPath: NSString(string: "~/Applications").expandingTildeInPath))
+    private func scanApps() {
+        Task {
+            let appURLs = getAppsInDirectory(at: URL(fileURLWithPath: "/Applications")) +
+                         getAppsInDirectory(at: URL(fileURLWithPath: "/System/Applications")) +
+                         getAppsInDirectory(at: FileManager.default.urls(for: .applicationDirectory, in: .localDomainMask).first ?? URL(fileURLWithPath: ""))
             
-            print("找到系统应用: \(systemApps.count)个")
-            print("找到用户应用: \(userApps.count)个")
-            
-            let appURLs = systemApps + userApps
-            
-            // 转换为 AppInfo 对象
             let apps = appURLs.compactMap { url -> AppInfo? in
                 guard let bundle = Bundle(url: url),
                       let bundleId = bundle.bundleIdentifier,
-                      let name = bundle.infoDictionary?["CFBundleName"] as? String ?? url.deletingPathExtension().lastPathComponent as String? else {
-                    print("无法读取应用信息: \(url.path)")
+                      let name = bundle.infoDictionary?["CFBundleName"] as? String ?? bundle.infoDictionary?["CFBundleDisplayName"] as? String else {
                     return nil
                 }
+                
                 let icon = NSWorkspace.shared.icon(forFile: url.path)
                 return AppInfo(bundleId: bundleId, name: name, icon: icon, url: url)
             }
             
             DispatchQueue.main.async {
                 installedApps = apps.sorted { $0.name < $1.name }
-                print("应用扫描完成，共找到 \(installedApps.count) 个有效应用")
             }
         }
     }
     
     private func getAppsInDirectory(at url: URL) -> [URL] {
-        print("扫描目录: \(url.path)")
         guard let contents = try? FileManager.default.contentsOfDirectory(
             at: url,
             includingPropertiesForKeys: [.isApplicationKey],
             options: [.skipsHiddenFiles]
         ) else {
-            print("无法读取目录: \(url.path)")
             return []
         }
         
-        let apps = contents.filter { url in
+        return contents.filter { url in
             guard url.pathExtension == "app" else { return false }
             guard let isApp = try? url.resourceValues(forKeys: [.isApplicationKey]).isApplication else { return false }
             return isApp
         }
-        
-        print("在 \(url.path) 中找到 \(apps.count) 个应用")
-        return apps
     }
 }
 
@@ -558,7 +541,7 @@ private struct WebShortcutToolbarView: View {
                 }
                 
                 // 分组按钮
-                ForEach(websiteManager.groups) { group in
+                ForEach(AppGroupManager.shared.groups) { group in
                     Button(action: {}) {
                         Text("\(group.name) (\(websiteManager.getWebsites(mode: .all, groupId: group.id).count))")
                             .foregroundColor(getTextColor(isSelected: selectedWebGroup == group.id))

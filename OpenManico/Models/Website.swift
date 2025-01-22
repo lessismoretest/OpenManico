@@ -4,7 +4,7 @@ import AppKit
 /**
  * 网站模型
  */
-struct Website: Identifiable, Codable {
+struct Website: Identifiable, Codable, Equatable {
     let id: UUID
     var url: String
     var name: String
@@ -24,6 +24,15 @@ struct Website: Identifiable, Codable {
         self.shortcutKey = shortcutKey
         self.groupIds = groupIds
         self.isEnabled = isEnabled
+    }
+    
+    static func == (lhs: Website, rhs: Website) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.url == rhs.url &&
+               lhs.name == rhs.name &&
+               lhs.shortcutKey == rhs.shortcutKey &&
+               lhs.groupIds == rhs.groupIds &&
+               lhs.isEnabled == rhs.isEnabled
     }
     
     func fetchIcon(completion: @escaping (NSImage?) -> Void) async {
@@ -166,7 +175,10 @@ class WebsiteManager: ObservableObject {
     func updateWebsite(_ website: Website) {
         print("[WebsiteManager] 更新网站: \(website.name)")
         if let index = websites.firstIndex(where: { $0.id == website.id }) {
-            websites[index] = website
+            // 只有当网站内容真正发生变化时才更新
+            if websites[index] != website {
+                websites[index] = website
+            }
         }
     }
     

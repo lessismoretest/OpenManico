@@ -51,6 +51,7 @@ class HotKeyManager: ObservableObject {
         let ref: EventHotKeyRef
         let keycode: UInt32
         let type: HotKeyType
+        let signature: OSType
     }
     
     @Published private var hotKeyRefs: [String: HotKeyInfo] = [:]  // key -> HotKeyInfo
@@ -143,15 +144,17 @@ class HotKeyManager: ObservableObject {
         
         // 创建热键 ID
         var hotKeyID = EventHotKeyID()
+        let signature: OSType
         
         switch type {
         case let .website(websiteId):
             let uuidBytes = withUnsafeBytes(of: websiteId.uuid) { Array($0) }
-            hotKeyID.signature = OSType(uuidBytes[0]) | OSType(uuidBytes[1]) << 8 | OSType(uuidBytes[2]) << 16 | OSType(uuidBytes[3]) << 24
+            signature = OSType(uuidBytes[0]) | OSType(uuidBytes[1]) << 8 | OSType(uuidBytes[2]) << 16 | OSType(uuidBytes[3]) << 24
         case let .app(bundleId):
-            hotKeyID.signature = OSType(abs(bundleId.hashValue & 0x7FFFFFFF))
+            signature = OSType(abs(bundleId.hashValue & 0x7FFFFFFF))
         }
         
+        hotKeyID.signature = signature
         hotKeyID.id = keycode
         print("[HotKeyManager] 创建热键ID: signature=\(hotKeyID.signature), id=\(hotKeyID.id)")
         
@@ -160,9 +163,25 @@ class HotKeyManager: ObservableObject {
         let modifiers: UInt32
         switch type {
         case .website:
-            modifiers = optionKeyMask | commandKeyMask
+            modifiers = optionKeyMask | commandKeyMask  // 网站快捷键使用 Option + Command 键
         case .app:
-            modifiers = optionKeyMask
+            modifiers = optionKeyMask   // 应用快捷键使用 Option 键
+        }
+        
+        // 生成唯一的存储键
+        let storageKey: String
+        switch type {
+        case .website:
+            storageKey = "web_\(key)"  // 网站快捷键前缀
+        case .app:
+            storageKey = "app_\(key)"  // 应用快捷键前缀
+        }
+        
+        // 如果已经注册了相同的快捷键，先注销它
+        if let existingInfo = hotKeyRefs[storageKey] {
+            UnregisterEventHotKey(existingInfo.ref)
+            hotKeyRefs.removeValue(forKey: storageKey)
+            print("[HotKeyManager] 注销已存在的快捷键: key=\(storageKey)")
         }
         
         let status = RegisterEventHotKey(
@@ -175,8 +194,8 @@ class HotKeyManager: ObservableObject {
         )
         
         if status == noErr, let hotKeyRef = hotKeyRef {
-            hotKeyRefs[key] = HotKeyInfo(ref: hotKeyRef, keycode: keycode, type: type)
-            print("[HotKeyManager] ✅ 快捷键注册成功: \(key)")
+            hotKeyRefs[storageKey] = HotKeyInfo(ref: hotKeyRef, keycode: keycode, type: type, signature: signature)
+            print("[HotKeyManager] ✅ 快捷键注册成功: key=\(storageKey)")
         } else {
             print("[HotKeyManager] ❌ 快捷键注册失败: status=\(status)")
         }
@@ -222,11 +241,36 @@ class HotKeyManager: ObservableObject {
                 if status == noErr {
                     print("[HotKeyManager] 获取热键ID成功: signature=\(hotKeyID.signature), id=\(hotKeyID.id)")
                     
+                    // 获取当前修饰键状态
+                    let currentFlags = NSEvent.modifierFlags
+                    let isOptionPressed = currentFlags.contains(.option)
+                    let isCommandPressed = currentFlags.contains(.command)
+                    
+                    print("[HotKeyManager] 当前修饰键状态: Option=\(isOptionPressed), Command=\(isCommandPressed)")
+                    
                     // 查找对应的快捷键
-                    if let hotKeyInfo = HotKeyManager.shared.hotKeyRefs.first(where: { $0.value.keycode == hotKeyID.id })?.value {
-                        DispatchQueue.main.async {
-                            HotKeyManager.shared.handleHotKey(info: hotKeyInfo)
+                    if let hotKeyInfo = HotKeyManager.shared.hotKeyRefs.first(where: { 
+                        $0.value.keycode == hotKeyID.id && $0.value.signature == hotKeyID.signature 
+                    })?.value {
+                        // 根据快捷键类型检查修饰键
+                        let shouldHandle: Bool
+                        switch hotKeyInfo.type {
+                        case .website:
+                            shouldHandle = isOptionPressed && isCommandPressed
+                        case .app:
+                            shouldHandle = isOptionPressed && !isCommandPressed
                         }
+                        
+                        if shouldHandle {
+                            DispatchQueue.main.async {
+                                print("[HotKeyManager] 处理热键事件: type=\(hotKeyInfo.type)")
+                                HotKeyManager.shared.handleHotKey(info: hotKeyInfo)
+                            }
+                        } else {
+                            print("[HotKeyManager] 修饰键不匹配，忽略事件")
+                        }
+                    } else {
+                        print("[HotKeyManager] ❌ 未找到对应的快捷键: id=\(hotKeyID.id), signature=\(hotKeyID.signature)")
                     }
                 } else {
                     print("[HotKeyManager] ❌ 获取热键ID失败: status=\(status)")
@@ -248,11 +292,14 @@ class HotKeyManager: ObservableObject {
     }
     
     private func handleHotKey(info: HotKeyInfo) {
+        print("[HotKeyManager] 开始处理热键: type=\(info.type)")
+        
         switch info.type {
-        case .website(let websiteId):
-            handleWebsiteHotKey(websiteId: websiteId)
         case .app(let bundleId):
             handleAppHotKey(bundleId: bundleId)
+            
+        case .website(let websiteId):
+            handleWebsiteHotKey(websiteId: websiteId)
         }
     }
     

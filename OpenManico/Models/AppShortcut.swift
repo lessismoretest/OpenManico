@@ -9,7 +9,7 @@ struct AppShortcut: Identifiable, Codable, Equatable, Hashable {
     var appName: String
     
     var displayKey: String {
-        "Option + \(key)"
+        key
     }
     
     static func == (lhs: AppShortcut, rhs: AppShortcut) -> Bool {
