@@ -128,6 +128,13 @@ enum ShortcutLabelPosition: String, Codable {
     }
 }
 
+// 在Theme枚举定义后添加
+enum FloatingWindowTheme: String {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+}
+
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
     
@@ -459,6 +466,12 @@ class AppSettings: ObservableObject {
         }
     }
     
+    @Published var floatingWindowTheme: FloatingWindowTheme = .system {
+        didSet {
+            saveSettings()
+        }
+    }
+    
     private let shortcutsKey = "AppShortcuts"
     private let themeKey = "AppTheme"
     private let launchAtLoginKey = "LaunchAtLogin"
@@ -515,6 +528,7 @@ class AppSettings: ObservableObject {
     private let floatingWindowCornerRadiusKey = "FloatingWindowCornerRadius"
     private let showDividerKey = "ShowDivider"
     private let dividerOpacityKey = "DividerOpacity"
+    private let floatingWindowThemeKey = "FloatingWindowTheme"
     
     private init() {
         isInitializing = true
@@ -556,6 +570,12 @@ class AppSettings: ObservableObject {
         
         showWebShortcutsInFloatingWindow = UserDefaults.standard.bool(forKey: showWebShortcutsInFloatingWindowKey)
         showAppsInFloatingWindow = UserDefaults.standard.bool(forKey: showAppsInFloatingWindowKey)
+        
+        // 加载悬浮窗主题设置
+        if let themeString = UserDefaults.standard.string(forKey: floatingWindowThemeKey),
+           let theme = FloatingWindowTheme(rawValue: themeString) {
+            floatingWindowTheme = theme
+        }
         
         isInitializing = false
     }
@@ -880,6 +900,9 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(floatingWindowCornerRadius, forKey: floatingWindowCornerRadiusKey)
         UserDefaults.standard.set(showDivider, forKey: showDividerKey)
         UserDefaults.standard.set(dividerOpacity, forKey: dividerOpacityKey)
+        
+        // 保存悬浮窗主题设置
+        UserDefaults.standard.set(floatingWindowTheme.rawValue, forKey: floatingWindowThemeKey)
         
         // 立即同步所有设置
         UserDefaults.standard.synchronize()

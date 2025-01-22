@@ -65,7 +65,7 @@ struct DockIconsView: View {
             if settings.useBlurEffect {
                 RoundedRectangle(cornerRadius: settings.floatingWindowCornerRadius)
                     .fill(.ultraThinMaterial)
-                    .blur(radius: settings.blurRadius)
+                    .clipShape(RoundedRectangle(cornerRadius: settings.floatingWindowCornerRadius))
             } else {
                 RoundedRectangle(cornerRadius: settings.floatingWindowCornerRadius)
                     .fill(Color.black.opacity(settings.floatingWindowOpacity))
@@ -179,9 +179,37 @@ struct DockIconsView: View {
 private struct TopToolbarView: View {
     @Binding var appDisplayMode: AppDisplayMode
     @Binding var selectedAppGroup: UUID?
+    @Environment(\.colorScheme) private var systemColorScheme
     let installedApps: [AppInfo]
     let runningApps: [AppInfo]
     let shortcuts: [AppShortcut]
+    
+    private var effectiveColorScheme: ColorScheme {
+        switch AppSettings.shared.floatingWindowTheme {
+        case .system:
+            return systemColorScheme
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
+    }
+    
+    private var textColor: Color {
+        effectiveColorScheme == .dark ? .white : .black.opacity(0.85)
+    }
+    
+    private var buttonBackgroundColor: Color {
+        Color.blue
+    }
+    
+    private var inactiveButtonBackgroundColor: Color {
+        effectiveColorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.15)
+    }
+    
+    private func getTextColor(isSelected: Bool) -> Color {
+        isSelected ? .white : textColor
+    }
     
     private func getGroupAppCount(group: AppGroup) -> Int {
         let groupApps = group.apps
@@ -229,7 +257,7 @@ private struct TopToolbarView: View {
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.blue)
+                            .fill(buttonBackgroundColor)
                     )
                 }
                 .menuStyle(BorderlessButtonMenuStyle())
@@ -238,17 +266,17 @@ private struct TopToolbarView: View {
                 
                 Divider()
                     .frame(height: 24)
-                    .background(Color.white.opacity(0.3))
+                    .background(Color.primary.opacity(0.3))
                 
                 // 全部应用按钮
                 Button(action: {}) {
                     Text("全部")
-                        .foregroundColor(.white)
+                        .foregroundColor(getTextColor(isSelected: selectedAppGroup == nil))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(selectedAppGroup == nil ? Color.blue : Color.gray.opacity(0.3))
+                                .fill(selectedAppGroup == nil ? buttonBackgroundColor : inactiveButtonBackgroundColor)
                         )
                 }
                 .buttonStyle(.plain)
@@ -262,12 +290,12 @@ private struct TopToolbarView: View {
                 ForEach(AppGroupManager.shared.groups) { group in
                     Button(action: {}) {
                         Text("\(group.name) (\(getGroupAppCount(group: group)))")
-                            .foregroundColor(.white)
+                            .foregroundColor(getTextColor(isSelected: selectedAppGroup == group.id))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedAppGroup == group.id ? Color.blue : Color.gray.opacity(0.3))
+                                    .fill(selectedAppGroup == group.id ? buttonBackgroundColor : inactiveButtonBackgroundColor)
                             )
                     }
                     .buttonStyle(.plain)
@@ -383,7 +411,23 @@ private struct WebShortcutListView: View {
 private struct WebsiteIconView: View {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var iconManager = WebIconManager.shared
+    @Environment(\.colorScheme) private var systemColorScheme
     let website: Website
+    
+    private var effectiveColorScheme: ColorScheme {
+        switch settings.floatingWindowTheme {
+        case .system:
+            return systemColorScheme
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
+    }
+    
+    private var textColor: Color {
+        effectiveColorScheme == .dark ? .white : .black.opacity(0.85)
+    }
     
     var body: some View {
         IconView(
@@ -394,7 +438,7 @@ private struct WebsiteIconView: View {
                     if settings.showWebsiteName {
                         Text(website.name)
                             .font(.system(size: settings.websiteNameFontSize))
-                            .foregroundColor(.white)
+                            .foregroundColor(textColor)
                             .lineLimit(1)
                             .frame(width: 60)
                     }
@@ -427,6 +471,34 @@ private struct WebShortcutToolbarView: View {
     @Binding var websiteDisplayMode: WebsiteDisplayMode
     @Binding var selectedWebGroup: UUID?
     @StateObject private var websiteManager = WebsiteManager.shared
+    @Environment(\.colorScheme) private var systemColorScheme
+    
+    private var effectiveColorScheme: ColorScheme {
+        switch AppSettings.shared.floatingWindowTheme {
+        case .system:
+            return systemColorScheme
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
+    }
+    
+    private var textColor: Color {
+        effectiveColorScheme == .dark ? .white : .black.opacity(0.85)
+    }
+    
+    private var buttonBackgroundColor: Color {
+        Color.blue
+    }
+    
+    private var inactiveButtonBackgroundColor: Color {
+        effectiveColorScheme == .dark ? Color.gray.opacity(0.3) : Color.gray.opacity(0.15)
+    }
+    
+    private func getTextColor(isSelected: Bool) -> Color {
+        isSelected ? .white : textColor
+    }
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -456,7 +528,7 @@ private struct WebShortcutToolbarView: View {
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.blue)
+                            .fill(buttonBackgroundColor)
                     )
                 }
                 .menuStyle(BorderlessButtonMenuStyle())
@@ -465,17 +537,17 @@ private struct WebShortcutToolbarView: View {
                 
                 Divider()
                     .frame(height: 24)
-                    .background(Color.white.opacity(0.3))
+                    .background(Color.primary.opacity(0.3))
                 
                 // 全部网站按钮
                 Button(action: {}) {
                     Text("全部")
-                        .foregroundColor(.white)
+                        .foregroundColor(getTextColor(isSelected: selectedWebGroup == nil))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(selectedWebGroup == nil ? Color.blue : Color.gray.opacity(0.3))
+                                .fill(selectedWebGroup == nil ? buttonBackgroundColor : inactiveButtonBackgroundColor)
                         )
                 }
                 .buttonStyle(.plain)
@@ -489,12 +561,12 @@ private struct WebShortcutToolbarView: View {
                 ForEach(websiteManager.groups) { group in
                     Button(action: {}) {
                         Text("\(group.name) (\(websiteManager.getWebsites(mode: .all, groupId: group.id).count))")
-                            .foregroundColor(.white)
+                            .foregroundColor(getTextColor(isSelected: selectedWebGroup == group.id))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedWebGroup == group.id ? Color.blue : Color.gray.opacity(0.3))
+                                    .fill(selectedWebGroup == group.id ? buttonBackgroundColor : inactiveButtonBackgroundColor)
                             )
                     }
                     .buttonStyle(.plain)
@@ -558,20 +630,24 @@ struct IconView<Label: View>: View {
                 if let key = shortcutKey {
                     if isWebsite && settings.showWebShortcutLabel {
                         let labelOffset = getLabelOffset(position: settings.webShortcutLabelPosition)
-                        Text("⌘\(key)")
-                            .font(.system(size: settings.webShortcutLabelFontSize, weight: .medium))
-                            .foregroundColor(settings.webShortcutLabelTextColor)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(settings.webShortcutLabelBackgroundColor)
-                            )
-                            .offset(x: labelOffset.x + settings.webShortcutLabelOffsetX,
-                                   y: labelOffset.y + settings.webShortcutLabelOffsetY)
+                        HStack(spacing: 2) {
+                            Image(systemName: "command")
+                                .font(.system(size: settings.webShortcutLabelFontSize, weight: .medium))
+                            Text(key)
+                                .font(.system(size: settings.webShortcutLabelFontSize, weight: .medium))
+                        }
+                        .foregroundColor(settings.webShortcutLabelTextColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(settings.webShortcutLabelBackgroundColor)
+                        )
+                        .offset(x: labelOffset.x + settings.webShortcutLabelOffsetX,
+                               y: labelOffset.y + settings.webShortcutLabelOffsetY)
                     } else if !isWebsite && settings.showAppShortcutLabel {
                         let labelOffset = getLabelOffset(position: settings.appShortcutLabelPosition)
-                        Text("⌘\(key)")
+                        Text(key)
                             .font(.system(size: settings.appShortcutLabelFontSize, weight: .medium))
                             .foregroundColor(settings.appShortcutLabelTextColor)
                             .padding(.horizontal, 6)
@@ -614,7 +690,23 @@ struct IconView<Label: View>: View {
 
 struct AppIconView: View {
     @StateObject private var settings = AppSettings.shared
+    @Environment(\.colorScheme) private var systemColorScheme
     let app: AppInfo
+    
+    private var effectiveColorScheme: ColorScheme {
+        switch settings.floatingWindowTheme {
+        case .system:
+            return systemColorScheme
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
+    }
+    
+    private var textColor: Color {
+        effectiveColorScheme == .dark ? .white : .black.opacity(0.85)
+    }
     
     var body: some View {
         IconView(
@@ -624,7 +716,7 @@ struct AppIconView: View {
                 if settings.showAppName {
                     Text(app.name)
                         .font(.system(size: settings.appNameFontSize))
-                        .foregroundColor(.white)
+                        .foregroundColor(textColor)
                         .lineLimit(1)
                         .frame(width: 60)
                 }
@@ -684,20 +776,92 @@ class DockIconsWindowController {
                 defer: false
             )
             
-            window.contentView = hostingView
+            // 创建并配置 NSVisualEffectView
+            let visualEffectView = NSVisualEffectView()
+            visualEffectView.blendingMode = .behindWindow
+            visualEffectView.state = .active
+            visualEffectView.wantsLayer = true
+            visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
+            visualEffectView.layer?.masksToBounds = true
+            
+            // 设置视图层级
+            window.contentView = visualEffectView
+            visualEffectView.addSubview(hostingView)
+            hostingView.frame = visualEffectView.bounds
+            hostingView.autoresizingMask = [.width, .height]
+            
             window.backgroundColor = .clear
             window.isOpaque = false
             window.level = .normal
             window.hasShadow = false
             window.collectionBehavior = [.canJoinAllSpaces, .stationary]
+            window.isMovableByWindowBackground = true
             
             self.previewWindow = window
         }
         
-        if let window = previewWindow {
-            updatePreviewWindow()
-            window.orderFront(nil)
+        updatePreviewWindow()
+    }
+    
+    // 获取窗口背景颜色
+    private func getWindowBackgroundColor() -> NSColor {
+        let settings = AppSettings.shared
+        let appearance = NSAppearance.currentDrawing()
+        let isDarkMode = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        
+        let effectiveIsDarkMode: Bool
+        switch settings.floatingWindowTheme {
+        case .system:
+            effectiveIsDarkMode = isDarkMode
+        case .light:
+            effectiveIsDarkMode = false
+        case .dark:
+            effectiveIsDarkMode = true
         }
+        
+        if settings.useBlurEffect {
+            return effectiveIsDarkMode ? .black.withAlphaComponent(0.3) : .white.withAlphaComponent(0.3)
+        } else {
+            return effectiveIsDarkMode ? .black.withAlphaComponent(settings.floatingWindowOpacity) : .white.withAlphaComponent(settings.floatingWindowOpacity)
+        }
+    }
+    
+    // 更新预览窗口
+    func updatePreviewWindow() {
+        guard let window = previewWindow else { return }
+        
+        let settings = AppSettings.shared
+        
+        // 更新 NSVisualEffectView 的圆角
+        if let visualEffectView = window.contentView as? NSVisualEffectView {
+            visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
+            
+            // 根据主题设置更新外观
+            switch settings.floatingWindowTheme {
+            case .system:
+                visualEffectView.material = .windowBackground
+                visualEffectView.appearance = nil
+            case .light:
+                visualEffectView.material = .windowBackground
+                visualEffectView.appearance = NSAppearance(named: .aqua)
+            case .dark:
+                visualEffectView.material = .windowBackground
+                visualEffectView.appearance = NSAppearance(named: .darkAqua)
+            }
+            
+            // 根据是否使用毛玻璃效果来设置
+            if settings.useBlurEffect {
+                visualEffectView.state = .active
+                window.backgroundColor = .clear
+            } else {
+                visualEffectView.state = .inactive
+                window.backgroundColor = getWindowBackgroundColor()
+            }
+        }
+        
+        window.setContentSize(NSSize(width: settings.floatingWindowWidth, height: settings.floatingWindowHeight))
+        updateWindowPosition(window)
+        window.orderFront(nil)
     }
     
     // 隐藏预览窗口
@@ -705,20 +869,39 @@ class DockIconsWindowController {
         previewWindow?.orderOut(nil)
     }
     
-    // 更新预览窗口
-    func updatePreviewWindow() {
-        if let window = previewWindow {
-            let settings = AppSettings.shared
-            window.setContentSize(NSSize(width: settings.floatingWindowWidth, height: settings.floatingWindowHeight))
-            updateWindowPosition(window)
-        }
-    }
-    
+    // 更新窗口大小
     private func updateWindowSize() {
         if let window = window {
             let settings = AppSettings.shared
             window.setContentSize(NSSize(width: settings.floatingWindowWidth, height: settings.floatingWindowHeight))
             updateWindowPosition(window)
+            
+            // 同时更新视觉效果
+            if let visualEffectView = window.contentView as? NSVisualEffectView {
+                visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
+                
+                // 根据主题设置更新外观
+                switch settings.floatingWindowTheme {
+                case .system:
+                    visualEffectView.material = .windowBackground
+                    visualEffectView.appearance = nil
+                case .light:
+                    visualEffectView.material = .windowBackground
+                    visualEffectView.appearance = NSAppearance(named: .aqua)
+                case .dark:
+                    visualEffectView.material = .windowBackground
+                    visualEffectView.appearance = NSAppearance(named: .darkAqua)
+                }
+                
+                // 根据是否使用毛玻璃效果来设置
+                if settings.useBlurEffect {
+                    visualEffectView.state = .active
+                    window.backgroundColor = .clear
+                } else {
+                    visualEffectView.state = .inactive
+                    window.backgroundColor = getWindowBackgroundColor()
+                }
+            }
         }
     }
     
@@ -783,8 +966,8 @@ class DockIconsWindowController {
         }
     }
     
+    // 显示窗口
     func showWindow() {
-        print("显示悬浮窗")
         if window == nil {
             let view = DockIconsView()
             let hostingView = NSHostingView(rootView: view)
@@ -797,31 +980,76 @@ class DockIconsWindowController {
                 defer: false
             )
             
-            window.contentView = hostingView
+            // 创建并配置 NSVisualEffectView
+            let visualEffectView = NSVisualEffectView()
+            visualEffectView.blendingMode = .behindWindow
+            visualEffectView.state = .active
+            visualEffectView.wantsLayer = true
+            visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
+            visualEffectView.layer?.masksToBounds = true
+            
+            // 设置视图层级
+            window.contentView = visualEffectView
+            visualEffectView.addSubview(hostingView)
+            hostingView.frame = visualEffectView.bounds
+            hostingView.autoresizingMask = [.width, .height]
+            
             window.backgroundColor = .clear
             window.isOpaque = false
             window.level = .floating
             window.hasShadow = false
             window.collectionBehavior = [.canJoinAllSpaces, .stationary]
+            window.isMovableByWindowBackground = true
             
             self.window = window
         }
         
-        if let window = window {
-            // 更新窗口大小
-            updateWindowSize()
-            
-            window.orderFront(nil)
-            isVisible = true
-            print("悬浮窗已显示，当前显示模式: \(AppSettings.shared.appDisplayMode)")
-        }
+        updateWindow()
+        window?.orderFront(nil)
+        isVisible = true
     }
     
+    // 更新窗口
+    private func updateWindow() {
+        guard let window = window else { return }
+        
+        let settings = AppSettings.shared
+        
+        // 更新 NSVisualEffectView 的圆角
+        if let visualEffectView = window.contentView as? NSVisualEffectView {
+            visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
+            
+            // 根据主题设置更新外观
+            switch settings.floatingWindowTheme {
+            case .system:
+                visualEffectView.material = .windowBackground
+                visualEffectView.appearance = nil
+            case .light:
+                visualEffectView.material = .windowBackground
+                visualEffectView.appearance = NSAppearance(named: .aqua)
+            case .dark:
+                visualEffectView.material = .windowBackground
+                visualEffectView.appearance = NSAppearance(named: .darkAqua)
+            }
+            
+            // 根据是否使用毛玻璃效果来设置
+            if settings.useBlurEffect {
+                visualEffectView.state = .active
+                window.backgroundColor = .clear
+            } else {
+                visualEffectView.state = .inactive
+                window.backgroundColor = getWindowBackgroundColor()
+            }
+        }
+        
+        window.setContentSize(NSSize(width: settings.floatingWindowWidth, height: settings.floatingWindowHeight))
+        updateWindowPosition(window)
+    }
+    
+    // 隐藏窗口
     func hideWindow() {
-        print("隐藏悬浮窗")
         window?.orderOut(nil)
         isVisible = false
-        print("悬浮窗已隐藏")
     }
     
     func toggleWindow() {
