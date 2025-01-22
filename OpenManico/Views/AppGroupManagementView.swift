@@ -1,14 +1,15 @@
 import SwiftUI
 
 /**
- * 分组管理视图
+ * 应用分组管理视图
  */
-struct GroupManagementView: View {
-    @StateObject private var websiteManager = WebsiteManager.shared
+struct AppGroupManagementView: View {
+    @StateObject private var appGroupManager = AppGroupManager.shared
     @Environment(\.dismiss) private var dismiss
     @State private var newGroupName = ""
-    @State private var editingGroup: WebsiteGroup?
+    @State private var editingGroup: AppGroup?
     @State private var editName = ""
+    @State private var isEditing = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -17,7 +18,11 @@ struct GroupManagementView: View {
                 Text("分组管理")
                     .font(.headline)
                 Spacer()
-                Button("完成") {
+                Button(isEditing ? "完成" : "编辑") {
+                    isEditing.toggle()
+                }
+                .buttonStyle(.bordered)
+                Button("关闭") {
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
@@ -28,12 +33,14 @@ struct GroupManagementView: View {
             
             // 分组列表
             List {
-                ForEach(websiteManager.groups) { group in
+                ForEach(appGroupManager.groups) { group in
                     HStack {
                         // 拖动手柄
-                        Image(systemName: "line.3.horizontal")
-                            .foregroundColor(.gray)
-                            .opacity(group.name == "默认" ? 0 : 0.5)
+                        if isEditing {
+                            Image(systemName: "line.3.horizontal")
+                                .foregroundColor(.gray)
+                                .opacity(group.name == "默认" ? 0 : 0.5)
+                        }
                         
                         if editingGroup?.id == group.id {
                             // 编辑模式
@@ -43,7 +50,7 @@ struct GroupManagementView: View {
                                     if !editName.isEmpty {
                                         var updatedGroup = group
                                         updatedGroup.name = editName
-                                        websiteManager.updateGroup(updatedGroup)
+                                        appGroupManager.updateGroup(updatedGroup)
                                         editingGroup = nil
                                     }
                                 }
@@ -51,10 +58,10 @@ struct GroupManagementView: View {
                             // 显示模式
                             Text(group.name)
                             Spacer()
-                            Text("\(websiteManager.getWebsites(mode: .all, groupId: group.id).count) 个网站")
+                            Text("\(appGroupManager.getApps(groupId: group.id).count) 个应用")
                                 .foregroundColor(.secondary)
                             
-                            if group.name != "默认" {
+                            if group.name != "默认" && isEditing {
                                 Button(action: {
                                     editingGroup = group
                                     editName = group.name
@@ -64,7 +71,7 @@ struct GroupManagementView: View {
                                 .buttonStyle(.borderless)
                                 
                                 Button(action: {
-                                    websiteManager.deleteGroup(group)
+                                    appGroupManager.deleteGroup(group)
                                 }) {
                                     Image(systemName: "trash")
                                 }
@@ -73,16 +80,16 @@ struct GroupManagementView: View {
                         }
                     }
                 }
-                .onMove { from, to in
-                    var groups = websiteManager.groups
-                    groups.move(fromOffsets: from, toOffset: to)
+                .onMove { source, destination in
+                    var groups = appGroupManager.groups
+                    groups.move(fromOffsets: source, toOffset: destination)
                     // 确保"默认"分组始终在第一位
                     if let defaultGroupIndex = groups.firstIndex(where: { $0.name == "默认" }),
                        defaultGroupIndex != 0 {
                         groups.move(fromOffsets: IndexSet(integer: defaultGroupIndex), toOffset: 0)
                     }
                     // 更新分组顺序
-                    websiteManager.groups = groups
+                    appGroupManager.groups = groups
                 }
             }
             
@@ -94,7 +101,7 @@ struct GroupManagementView: View {
                     .textFieldStyle(.roundedBorder)
                 Button("添加") {
                     if !newGroupName.isEmpty {
-                        websiteManager.addGroup(name: newGroupName)
+                        appGroupManager.createGroup(name: newGroupName, apps: [])
                         newGroupName = ""
                     }
                 }

@@ -40,12 +40,12 @@ struct WebsiteListView: View {
                         ForEach(websiteManager.groups) { group in
                             Button(action: { selectedGroup = group.id }) {
                                 Text("\(group.name) (\(websiteManager.getWebsites(mode: .all, groupId: group.id).count))")
-                                    .foregroundColor(.white)
+                                    .foregroundColor(selectedGroup == group.id ? .white : .primary)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
-                                            .fill(selectedGroup == group.id ? Color.blue : Color.gray.opacity(0.3))
+                                            .fill(selectedGroup == group.id ? Color.blue : Color(NSColor.controlBackgroundColor))
                                     )
                             }
                             .buttonStyle(.plain)
@@ -60,8 +60,16 @@ struct WebsiteListView: View {
                 // 管理按钮
                 Button(action: { showingGroupManagement = true }) {
                     Image(systemName: "folder.badge.gearshape")
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.blue)
+                        )
                 }
                 .buttonStyle(.plain)
+                .help("管理分组")
                 .padding(.trailing, 12)
             }
             .frame(height: 36)
@@ -140,15 +148,7 @@ struct WebsiteListView: View {
             .listStyle(.inset)
         }
         .sheet(isPresented: $showingAddSheet) {
-            AddWebsiteView { url, name in
-                let website = Website(url: url, name: name)
-                websiteManager.addWebsite(website)
-                // 添加到当前选中的分组
-                if let groupId = selectedGroup {
-                    websiteManager.addWebsiteToGroup(website.id, groupId: groupId)
-                }
-                showingAddSheet = false
-            }
+            AddWebsiteView()
         }
         .sheet(isPresented: $showingGroupManagement) {
             GroupManagementView()
@@ -245,35 +245,27 @@ struct WebsiteRow: View {
                 
                 // 分组菜单
                 Menu {
-                    if let currentGroup = websiteGroups.first {
-                        Text("当前分组：\(currentGroup.name)")
-                            .foregroundColor(.secondary)
-                        
-                        Divider()
-                        
-                        ForEach(websiteManager.groups.filter { $0.id != currentGroup.id }) { group in
-                            Button(action: {
-                                onGroupSelect(website, group.id)
-                            }) {
-                                Label("移动到「\(group.name)」", systemImage: "arrow.right.circle")
-                            }
-                        }
-                    } else {
-                        Text("未分组")
-                            .foregroundColor(.secondary)
-                        
-                        Divider()
-                        
-                        ForEach(websiteManager.groups) { group in
-                            Button(action: {
-                                onGroupSelect(website, group.id)
-                            }) {
-                                Label("移动到「\(group.name)」", systemImage: "arrow.right.circle")
+                    ForEach(websiteManager.groups) { group in
+                        Button(action: {
+                            onGroupSelect(website, group.id)
+                        }) {
+                            HStack {
+                                Text(group.name)
+                                Spacer()
+                                if website.groupIds.contains(group.id) {
+                                    Image(systemName: "checkmark")
+                                }
                             }
                         }
                     }
                 } label: {
-                    Image(systemName: "folder")
+                    HStack {
+                        Image(systemName: "folder")
+                        if let group = websiteGroups.first {
+                            Text(group.name)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
                 .menuStyle(.borderlessButton)
                 
@@ -317,7 +309,6 @@ struct AddWebsiteView: View {
     @State private var icon: NSImage?
     @State private var selectedGroupId: UUID?
     @State private var showingGroupManagement = false
-    let onAdd: (String, String) -> Void
     
     var body: some View {
         VStack(spacing: 20) {
@@ -353,9 +344,8 @@ struct AddWebsiteView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 4)
                     .background(Color(NSColor.controlBackgroundColor))
                     .cornerRadius(6)
                 }
@@ -365,7 +355,7 @@ struct AddWebsiteView: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 TextField("网站地址", text: $url)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .textFieldStyle(.roundedBorder)
                     .onChange(of: url) { newValue in
                         if let urlObj = URL(string: newValue),
                            let host = urlObj.host {
@@ -375,7 +365,7 @@ struct AddWebsiteView: View {
                     }
                 
                 TextField("网站名称", text: $name)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .textFieldStyle(.roundedBorder)
                 
                 if let icon = icon {
                     HStack {
@@ -402,7 +392,6 @@ struct AddWebsiteView: View {
                     if let groupId = groupId {
                         websiteManager.addWebsiteToGroup(website.id, groupId: groupId)
                     }
-                    onAdd(url, name)
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)

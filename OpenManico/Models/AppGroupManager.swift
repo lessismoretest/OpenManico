@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /**
  * 应用分组管理器
@@ -6,20 +7,29 @@ import Foundation
 class AppGroupManager: ObservableObject {
     static let shared = AppGroupManager()
     
-    @Published private(set) var groups: [AppGroup] = []
+    @Published var groups: [AppGroup] = [] {
+        didSet {
+            saveGroups()
+        }
+    }
+    
     private let groupsKey = "AppGroups"
     
     private init() {
         loadGroups()
+        
+        // 如果没有分组，创建默认分组
+        if groups.isEmpty {
+            createGroup(name: "默认", apps: [])
+        }
     }
     
     /**
      * 创建新分组
      */
     func createGroup(name: String, apps: [AppInfo]) {
-        let groupItems = apps.map { AppGroupItem(bundleId: $0.bundleId, name: $0.name) }
-        let newGroup = AppGroup(name: name, apps: groupItems)
-        groups.append(newGroup)
+        let group = AppGroup(name: name, apps: apps.map { AppGroupItem(bundleId: $0.bundleId, name: $0.name) })
+        groups.append(group)
         saveGroups()
     }
     
@@ -65,12 +75,35 @@ class AppGroupManager: ObservableObject {
     }
     
     /**
+     * 更新分组
+     */
+    func updateGroup(_ group: AppGroup) {
+        if let index = groups.firstIndex(where: { $0.id == group.id }) {
+            groups[index] = group
+            saveGroups()
+        }
+    }
+    
+    /**
+     * 获取分组应用
+     */
+    func getApps(groupId: UUID) -> [AppGroupItem] {
+        if let group = groups.first(where: { $0.id == groupId }) {
+            return group.apps
+        }
+        return []
+    }
+    
+    /**
      * 加载分组
      */
     private func loadGroups() {
-        if let data = UserDefaults.standard.data(forKey: groupsKey),
-           let decodedGroups = try? JSONDecoder().decode([AppGroup].self, from: data) {
-            groups = decodedGroups
+        if let data = UserDefaults.standard.data(forKey: groupsKey) {
+            do {
+                groups = try JSONDecoder().decode([AppGroup].self, from: data)
+            } catch {
+                print("Failed to load groups: \(error)")
+            }
         }
     }
     
@@ -78,8 +111,11 @@ class AppGroupManager: ObservableObject {
      * 保存分组
      */
     private func saveGroups() {
-        if let encoded = try? JSONEncoder().encode(groups) {
-            UserDefaults.standard.set(encoded, forKey: groupsKey)
+        do {
+            let data = try JSONEncoder().encode(groups)
+            UserDefaults.standard.set(data, forKey: groupsKey)
+        } catch {
+            print("Failed to save groups: \(error)")
         }
     }
 } 

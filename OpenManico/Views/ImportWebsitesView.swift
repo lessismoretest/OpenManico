@@ -68,7 +68,7 @@ struct ImportWebsitesView: View {
             if columns.count >= 2 {
                 let name = columns[0]
                 let url = columns[1]
-                let groupName = columns.count > 2 ? columns[2] : "常用"
+                let groupName = columns.count > 2 ? columns[2] : "默认"
                 
                 // 创建网站
                 let website = Website(url: url, name: name)

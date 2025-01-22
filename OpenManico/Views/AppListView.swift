@@ -14,6 +14,7 @@ struct AppListView: View {
     @State private var selectedGroup: AppGroup?
     @State private var showingNewGroupSheet = false
     @State private var isScanning = false
+    @State private var showingGroupManagement = false
     
     var filteredApps: [AppInfo] {
         var apps = installedApps
@@ -36,69 +37,62 @@ struct AppListView: View {
         VStack(spacing: 0) {
             // 分组列表
             if !groupManager.groups.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        // 全部应用按钮
-                        Button(action: { selectedGroup = nil }) {
-                            Text("全部")
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedGroup == nil ? Color.blue : Color.gray.opacity(0.3))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        
-                        // 分组按钮
-                        ForEach(groupManager.groups) { group in
-                            HStack {
+                HStack(spacing: 0) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            // 全部应用按钮
+                            Button(action: { selectedGroup = nil }) {
+                                Text("全部")
+                                    .foregroundColor(selectedGroup == nil ? .white : .primary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(selectedGroup == nil ? Color.blue : Color(NSColor.controlBackgroundColor))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            
+                            // 分组按钮
+                            ForEach(groupManager.groups) { group in
                                 Button(action: { selectedGroup = group }) {
-                                    Text("\(group.name) (\(group.apps.count))")
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(selectedGroup?.id == group.id ? Color.blue : Color.gray.opacity(0.3))
-                                        )
+                                    HStack {
+                                        Image(systemName: "folder")
+                                        Text("\(group.name) (\(group.apps.count))")
+                                    }
+                                    .foregroundColor(selectedGroup?.id == group.id ? .white : .primary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(selectedGroup?.id == group.id ? Color.blue : Color(NSColor.controlBackgroundColor))
+                                    )
                                 }
                                 .buttonStyle(.plain)
-                                
-                                // 编辑分组按钮
-                                if selectedGroup?.id == group.id {
-                                    Button(action: {
-                                        selectedGroup = group
-                                        newGroupName = group.name
-                                        showingGroupSheet = true
-                                    }) {
-                                        Image(systemName: "pencil")
-                                            .foregroundColor(.white)
-                                    }
-                                    .buttonStyle(.plain)
-                                    
-                                    Button(action: {
-                                        groupManager.deleteGroup(group)
-                                        selectedGroup = nil
-                                    }) {
-                                        Image(systemName: "trash")
-                                            .foregroundColor(.white)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
                             }
                         }
-                        
-                        // 添加分组按钮
-                        Button(action: { showingNewGroupSheet = true }) {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.blue)
-                        }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal)
                     }
-                    .padding(.horizontal, 16)
+                    
+                    Divider()
+                        .padding(.horizontal, 8)
+                    
+                    // 管理按钮
+                    Button(action: { showingGroupManagement = true }) {
+                        Image(systemName: "folder.badge.gearshape")
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.blue)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help("管理分组")
+                    .padding(.trailing, 12)
                 }
+                .frame(height: 36)
                 .padding(.vertical, 8)
             }
             
@@ -127,8 +121,6 @@ struct AppListView: View {
                 .disabled(isScanning)
             }
             .padding()
-            
-            Divider()
             
             // 应用列表
             if isLoading {
@@ -203,6 +195,9 @@ struct AppListView: View {
             }
             .padding()
             .frame(width: 300, height: 150)
+        }
+        .sheet(isPresented: $showingGroupManagement) {
+            AppGroupManagementView()
         }
     }
     

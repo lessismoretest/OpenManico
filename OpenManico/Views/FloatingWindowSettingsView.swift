@@ -55,17 +55,32 @@ struct FloatingWindowSettingsView: View {
         .formStyle(.grouped)
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            if settings.showFloatingWindow {
-                DockIconsWindowController.shared.hideWindow()
-                DockIconsWindowController.shared.showPreviewWindow()
-            }
+        .onChange(of: settings.floatingWindowWidth) { _ in
+            DockIconsWindowController.shared.updateWindow()
         }
-        .onDisappear {
-            DockIconsWindowController.shared.hidePreviewWindow()
-            if settings.showFloatingWindow {
-                DockIconsWindowController.shared.showWindow()
-            }
+        .onChange(of: settings.floatingWindowHeight) { _ in
+            DockIconsWindowController.shared.updateWindow()
+        }
+        .onChange(of: settings.floatingWindowCornerRadius) { _ in
+            DockIconsWindowController.shared.updateWindow()
+        }
+        .onChange(of: settings.floatingWindowTheme) { _ in
+            DockIconsWindowController.shared.updateWindow()
+        }
+        .onChange(of: settings.useBlurEffect) { _ in
+            DockIconsWindowController.shared.updateWindow()
+        }
+        .onChange(of: settings.floatingWindowOpacity) { _ in
+            DockIconsWindowController.shared.updateWindow()
+        }
+        .onChange(of: settings.windowPosition) { _ in
+            DockIconsWindowController.shared.updateWindow()
+        }
+        .onChange(of: settings.floatingWindowX) { _ in
+            DockIconsWindowController.shared.updateWindow()
+        }
+        .onChange(of: settings.floatingWindowY) { _ in
+            DockIconsWindowController.shared.updateWindow()
         }
     }
 }
@@ -101,7 +116,7 @@ private struct WindowSizeSection: View {
                 value: $settings.floatingWindowWidth,
                 range: 400...1200,
                 step: 50,
-                onChange: { DockIconsWindowController.shared.updatePreviewWindow() }
+                onChange: { DockIconsWindowController.shared.updateWindow() }
             )
             
             SliderRow(
@@ -109,7 +124,7 @@ private struct WindowSizeSection: View {
                 value: $settings.floatingWindowHeight,
                 range: 300...800,
                 step: 50,
-                onChange: { DockIconsWindowController.shared.updatePreviewWindow() }
+                onChange: { DockIconsWindowController.shared.updateWindow() }
             )
             
             SliderRow(
@@ -117,7 +132,7 @@ private struct WindowSizeSection: View {
                 value: $settings.floatingWindowCornerRadius,
                 range: 0...32,
                 step: 2,
-                onChange: { DockIconsWindowController.shared.updatePreviewWindow() }
+                onChange: { DockIconsWindowController.shared.updateWindow() }
             )
         } header: {
             Text("窗口尺寸")
@@ -150,7 +165,7 @@ private struct WindowPositionSection: View {
                 }
             }
             .onChange(of: settings.windowPosition) { _ in
-                DockIconsWindowController.shared.updatePreviewWindow()
+                DockIconsWindowController.shared.updateWindow()
             }
             
             if settings.windowPosition == .custom {
@@ -161,7 +176,7 @@ private struct WindowPositionSection: View {
                         .frame(width: 60)
                         .textFieldStyle(.roundedBorder)
                         .onChange(of: settings.floatingWindowX) { _ in
-                            DockIconsWindowController.shared.updatePreviewWindow()
+                            DockIconsWindowController.shared.updateWindow()
                         }
                 }
                 
@@ -172,7 +187,7 @@ private struct WindowPositionSection: View {
                         .frame(width: 60)
                         .textFieldStyle(.roundedBorder)
                         .onChange(of: settings.floatingWindowY) { _ in
-                            DockIconsWindowController.shared.updatePreviewWindow()
+                            DockIconsWindowController.shared.updateWindow()
                         }
                 }
             }
@@ -196,13 +211,13 @@ private struct WindowAppearanceSection: View {
                 Text("深色").tag(FloatingWindowTheme.dark)
             }
             .onChange(of: settings.floatingWindowTheme) { _ in
-                DockIconsWindowController.shared.updatePreviewWindow()
+                DockIconsWindowController.shared.updateWindow()
             }
             
             Toggle("使用毛玻璃效果", isOn: $settings.useBlurEffect)
                 .onChange(of: settings.useBlurEffect) { _ in
                     settings.saveSettings()
-                    DockIconsWindowController.shared.updatePreviewWindow()
+                    DockIconsWindowController.shared.updateWindow()
                 }
             
             if !settings.useBlurEffect {
@@ -212,7 +227,7 @@ private struct WindowAppearanceSection: View {
                     range: 0.1...1.0,
                     step: 0.1,
                     valueFormatter: { "\(Int($0 * 100))%" },
-                    onChange: { DockIconsWindowController.shared.updatePreviewWindow() }
+                    onChange: { DockIconsWindowController.shared.updateWindow() }
                 )
             }
         } header: {
@@ -351,6 +366,20 @@ private struct ShortcutLabelSection: View {
                     }
                 }
                 
+                SliderRow(
+                    title: "水平偏移",
+                    value: $settings.appShortcutLabelOffsetX,
+                    range: -50...50,
+                    step: 1
+                )
+                
+                SliderRow(
+                    title: "垂直偏移",
+                    value: $settings.appShortcutLabelOffsetY,
+                    range: -50...50,
+                    step: 1
+                )
+                
                 ColorPicker("标签背景色", selection: $settings.appShortcutLabelBackgroundColor)
                 ColorPicker("标签文字色", selection: $settings.appShortcutLabelTextColor)
                 
@@ -360,6 +389,47 @@ private struct ShortcutLabelSection: View {
                     range: 8...16,
                     step: 1
                 )
+            }
+            
+            if settings.showWebShortcutsInFloatingWindow {
+                Toggle("显示网站快捷键标签", isOn: $settings.showWebShortcutLabel)
+                
+                if settings.showWebShortcutLabel {
+                    Picker("标签位置", selection: $settings.webShortcutLabelPosition) {
+                        ForEach([
+                            ShortcutLabelPosition.top,
+                            ShortcutLabelPosition.bottom,
+                            ShortcutLabelPosition.left,
+                            ShortcutLabelPosition.right
+                        ], id: \.self) { position in
+                            Text(position.description).tag(position)
+                        }
+                    }
+                    
+                    SliderRow(
+                        title: "水平偏移",
+                        value: $settings.webShortcutLabelOffsetX,
+                        range: -50...50,
+                        step: 1
+                    )
+                    
+                    SliderRow(
+                        title: "垂直偏移",
+                        value: $settings.webShortcutLabelOffsetY,
+                        range: -50...50,
+                        step: 1
+                    )
+                    
+                    ColorPicker("标签背景色", selection: $settings.webShortcutLabelBackgroundColor)
+                    ColorPicker("标签文字色", selection: $settings.webShortcutLabelTextColor)
+                    
+                    SliderRow(
+                        title: "标签大小",
+                        value: $settings.webShortcutLabelFontSize,
+                        range: 8...16,
+                        step: 1
+                    )
+                }
             }
         } header: {
             Text("快捷键标签")
@@ -533,7 +603,7 @@ private struct DividerSection: View {
 private struct InstructionSection: View {
     var body: some View {
         Section {
-            Text("长按 Option 键显示应用快捷键悬浮窗")
+            Text("长按 Option 键显示悬浮窗")
                 .font(.callout)
                 .foregroundColor(.secondary)
             

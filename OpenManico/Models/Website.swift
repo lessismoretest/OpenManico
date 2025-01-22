@@ -286,7 +286,7 @@ class WebsiteManager: ObservableObject {
         // 如果没有分组，创建默认分组
         if groups.isEmpty {
             print("[WebsiteManager] 创建默认分组")
-            addGroup(name: "常用")
+            addGroup(name: "默认")
         }
     }
     

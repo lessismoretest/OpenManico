@@ -15,6 +15,7 @@ struct DockIconsView: View {
     @State private var selectedAppGroup: UUID?
     @State private var selectedWebGroup: UUID?
     @State private var webIcons: [UUID: NSImage] = [:]
+    @State private var optionKeyMonitor: Any?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -63,6 +64,23 @@ struct DockIconsView: View {
             scanApps()
             startRunningAppsMonitor()
             setupHotKeys()
+            
+            // 设置 Option 键监听
+            optionKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { event in
+                let isOptionKeyPressed = event.modifierFlags.contains(.option)
+                if isOptionKeyPressed {
+                    DockIconsWindowController.shared.showWindow()
+                } else {
+                    DockIconsWindowController.shared.hideWindow()
+                }
+            }
+        }
+        .onDisappear {
+            // 移除 Option 键监听
+            if let monitor = optionKeyMonitor {
+                NSEvent.removeMonitor(monitor)
+                optionKeyMonitor = nil
+            }
         }
         .onChange(of: appDisplayMode) { newMode in
             settings.appDisplayMode = newMode
@@ -71,12 +89,10 @@ struct DockIconsView: View {
             settings.websiteDisplayMode = newMode
         }
         .onChange(of: settings.shortcuts) { _ in
-            // 当快捷键列表变化时，重新扫描应用和设置快捷键
             scanApps()
             setupHotKeys()
         }
         .onChange(of: websiteManager.websites) { _ in
-            // 当网站列表变化时，更新快捷键
             setupHotKeys()
         }
     }
@@ -120,23 +136,35 @@ struct DockIconsView: View {
     
     private func scanApps() {
         Task {
+            // 扫描所有可能的应用目录
             let appURLs = getAppsInDirectory(at: URL(fileURLWithPath: "/Applications")) +
                          getAppsInDirectory(at: URL(fileURLWithPath: "/System/Applications")) +
-                         getAppsInDirectory(at: FileManager.default.urls(for: .applicationDirectory, in: .localDomainMask).first ?? URL(fileURLWithPath: ""))
+                         getAppsInDirectory(at: FileManager.default.urls(for: .applicationDirectory, in: .localDomainMask).first ?? URL(fileURLWithPath: "")) +
+                         getAppsInDirectory(at: URL(fileURLWithPath: NSString(string: "~/Applications").expandingTildeInPath))
             
-            let apps = appURLs.compactMap { url -> AppInfo? in
+            var uniqueApps: [String: AppInfo] = [:]  // 使用字典来去重
+            
+            for url in appURLs {
                 guard let bundle = Bundle(url: url),
-                      let bundleId = bundle.bundleIdentifier,
-                      let name = bundle.infoDictionary?["CFBundleName"] as? String ?? bundle.infoDictionary?["CFBundleDisplayName"] as? String else {
-                    return nil
+                      let bundleId = bundle.bundleIdentifier else {
+                    continue
                 }
                 
+                // 如果已经存在相同 bundleId 的应用，跳过
+                if uniqueApps[bundleId] != nil {
+                    continue
+                }
+                
+                let name = bundle.infoDictionary?["CFBundleName"] as? String ??
+                          bundle.infoDictionary?["CFBundleDisplayName"] as? String ??
+                          url.deletingPathExtension().lastPathComponent
+                
                 let icon = NSWorkspace.shared.icon(forFile: url.path)
-                return AppInfo(bundleId: bundleId, name: name, icon: icon, url: url)
+                uniqueApps[bundleId] = AppInfo(bundleId: bundleId, name: name, icon: icon, url: url)
             }
             
             DispatchQueue.main.async {
-                installedApps = apps.sorted { $0.name < $1.name }
+                installedApps = Array(uniqueApps.values).sorted { $0.name < $1.name }
             }
         }
     }
@@ -195,20 +223,19 @@ private struct TopToolbarView: View {
     }
     
     private func getGroupAppCount(group: AppGroup) -> Int {
-        let groupApps = group.apps
+        let groupBundleIds = Set(group.apps.map { $0.bundleId })
         switch appDisplayMode {
         case .all:
-            return installedApps.filter { app in
-                groupApps.contains(where: { $0.bundleId == app.bundleId })
-            }.count
+            return installedApps.filter { groupBundleIds.contains($0.bundleId) }.count
         case .runningOnly:
-            return runningApps.filter { app in
-                groupApps.contains(where: { $0.bundleId == app.bundleId })
-            }.count
+            return runningApps.filter { groupBundleIds.contains($0.bundleId) }.count
         case .shortcutOnly:
-            return shortcuts.filter { shortcut in
-                groupApps.contains(where: { $0.bundleId == shortcut.bundleIdentifier })
-            }.count
+            let shortcutApps = shortcuts
+                .filter { groupBundleIds.contains($0.bundleIdentifier) }
+                .filter { shortcut in
+                    installedApps.contains { $0.bundleId == shortcut.bundleIdentifier }
+                }
+            return shortcutApps.count
         }
     }
     
@@ -253,7 +280,12 @@ private struct TopToolbarView: View {
                 
                 // 全部应用按钮
                 Button(action: {}) {
-                    Text("全部")
+                    let totalCount = switch appDisplayMode {
+                        case .all: installedApps.count
+                        case .runningOnly: runningApps.count
+                        case .shortcutOnly: shortcuts.count
+                    }
+                    Text("全部 (\(totalCount))")
                         .foregroundColor(getTextColor(isSelected: selectedAppGroup == nil))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
@@ -305,7 +337,8 @@ private struct DockAppListView: View {
     let selectedAppGroup: UUID?
     
     var filteredApps: [AppInfo] {
-        guard let groupId = selectedAppGroup else {
+        // 如果没有选择分组，显示所有应用
+        if selectedAppGroup == nil {
             switch appDisplayMode {
             case .all:
                 return installedApps
@@ -313,38 +346,25 @@ private struct DockAppListView: View {
                 return runningApps
             case .shortcutOnly:
                 return shortcuts.compactMap { shortcut in
-                    AppInfo(
-                        bundleId: shortcut.bundleIdentifier,
-                        name: shortcut.appName,
-                        icon: NSWorkspace.shared.icon(forFile: NSWorkspace.shared.urlForApplication(withBundleIdentifier: shortcut.bundleIdentifier)?.path ?? ""),
-                        url: NSWorkspace.shared.urlForApplication(withBundleIdentifier: shortcut.bundleIdentifier)
-                    )
+                    installedApps.first { $0.bundleId == shortcut.bundleIdentifier }
                 }
             }
         }
         
-        let groupApps = AppGroupManager.shared.groups.first(where: { $0.id == groupId })?.apps ?? []
+        // 如果选择了分组，只显示分组内的应用
+        let groupApps = AppGroupManager.shared.groups.first(where: { $0.id == selectedAppGroup })?.apps ?? []
+        let groupBundleIds = Set(groupApps.map { $0.bundleId })
+        
         switch appDisplayMode {
         case .all:
-            return installedApps.filter { app in
-                groupApps.contains(where: { $0.bundleId == app.bundleId })
-            }
+            return installedApps.filter { groupBundleIds.contains($0.bundleId) }
         case .runningOnly:
-            return runningApps.filter { app in
-                groupApps.contains(where: { $0.bundleId == app.bundleId })
-            }
+            return runningApps.filter { groupBundleIds.contains($0.bundleId) }
         case .shortcutOnly:
             return shortcuts
-                .filter { shortcut in
-                    groupApps.contains(where: { $0.bundleId == shortcut.bundleIdentifier })
-                }
+                .filter { groupBundleIds.contains($0.bundleIdentifier) }
                 .compactMap { shortcut in
-                    AppInfo(
-                        bundleId: shortcut.bundleIdentifier,
-                        name: shortcut.appName,
-                        icon: NSWorkspace.shared.icon(forFile: NSWorkspace.shared.urlForApplication(withBundleIdentifier: shortcut.bundleIdentifier)?.path ?? ""),
-                        url: NSWorkspace.shared.urlForApplication(withBundleIdentifier: shortcut.bundleIdentifier)
-                    )
+                    installedApps.first { $0.bundleId == shortcut.bundleIdentifier }
                 }
         }
     }
@@ -352,7 +372,7 @@ private struct DockAppListView: View {
     var body: some View {
         ScrollView {
             LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: settings.appIconSize + 20), spacing: 16)
+                GridItem(.adaptive(minimum: max(settings.appIconSize, 80)))
             ], spacing: 16) {
                 ForEach(filteredApps, id: \.bundleId) { app in
                     AppIconView(app: app)
@@ -376,7 +396,7 @@ private struct WebShortcutListView: View {
     var body: some View {
         ScrollView {
             LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: settings.webIconSize + 20), spacing: 16)
+                GridItem(.adaptive(minimum: max(settings.webIconSize, 80)))
             ], spacing: 16) {
                 let websites = websiteManager.getWebsites(mode: websiteDisplayMode, groupId: selectedWebGroup)
                 ForEach(websites) { website in
@@ -386,7 +406,6 @@ private struct WebShortcutListView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-        .padding(.top, 8)
     }
 }
 
@@ -423,7 +442,7 @@ private struct WebsiteIconView: View {
                             .font(.system(size: settings.websiteNameFontSize))
                             .foregroundColor(textColor)
                             .lineLimit(1)
-                            .frame(width: 60)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                 }
             },
@@ -541,9 +560,9 @@ private struct WebShortcutToolbarView: View {
                 }
                 
                 // 分组按钮
-                ForEach(AppGroupManager.shared.groups) { group in
+                ForEach(websiteManager.groups) { group in
                     Button(action: {}) {
-                        Text("\(group.name) (\(websiteManager.getWebsites(mode: .all, groupId: group.id).count))")
+                        Text(group.name)
                             .foregroundColor(getTextColor(isSelected: selectedWebGroup == group.id))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -721,7 +740,6 @@ struct AppIconView: View {
 class DockIconsWindowController {
     static let shared = DockIconsWindowController()
     private var window: NSWindow?
-    private var previewWindow: NSWindow?
     @objc private var isVisible = false
     private var observer: NSObjectProtocol?
     
@@ -733,8 +751,7 @@ class DockIconsWindowController {
             queue: .main
         ) { [weak self] _ in
             if self?.isVisible == true {
-                self?.updateWindowSize()
-                self?.updatePreviewWindow()
+                self?.updateWindow()
             }
         }
     }
@@ -743,47 +760,6 @@ class DockIconsWindowController {
         if let observer = observer {
             NotificationCenter.default.removeObserver(observer)
         }
-    }
-    
-    // 显示预览窗口
-    func showPreviewWindow() {
-        if previewWindow == nil {
-            let view = DockIconsView()
-            let hostingView = NSHostingView(rootView: view)
-            
-            let settings = AppSettings.shared
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: settings.floatingWindowWidth, height: settings.floatingWindowHeight),
-                styleMask: [.borderless],
-                backing: .buffered,
-                defer: false
-            )
-            
-            // 创建并配置 NSVisualEffectView
-            let visualEffectView = NSVisualEffectView()
-            visualEffectView.blendingMode = .behindWindow
-            visualEffectView.state = .active
-            visualEffectView.wantsLayer = true
-            visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
-            visualEffectView.layer?.masksToBounds = true
-            
-            // 设置视图层级
-            window.contentView = visualEffectView
-            visualEffectView.addSubview(hostingView)
-            hostingView.frame = visualEffectView.bounds
-            hostingView.autoresizingMask = [.width, .height]
-            
-            window.backgroundColor = .clear
-            window.isOpaque = false
-            window.level = .normal
-            window.hasShadow = false
-            window.collectionBehavior = [.canJoinAllSpaces, .stationary]
-            window.isMovableByWindowBackground = true
-            
-            self.previewWindow = window
-        }
-        
-        updatePreviewWindow()
     }
     
     // 获取窗口背景颜色
@@ -802,90 +778,57 @@ class DockIconsWindowController {
             effectiveIsDarkMode = true
         }
         
-        if settings.useBlurEffect {
-            return effectiveIsDarkMode ? .black.withAlphaComponent(0.3) : .white.withAlphaComponent(0.3)
-        } else {
-            return effectiveIsDarkMode ? .black.withAlphaComponent(settings.floatingWindowOpacity) : .white.withAlphaComponent(settings.floatingWindowOpacity)
-        }
+        return effectiveIsDarkMode ? .black : .white
     }
     
-    // 更新预览窗口
-    func updatePreviewWindow() {
-        guard let window = previewWindow else { return }
+    // 更新窗口
+    func updateWindow() {
+        guard let window = window else { return }
         
         let settings = AppSettings.shared
         
         // 更新 NSVisualEffectView 的圆角
         if let visualEffectView = window.contentView as? NSVisualEffectView {
             visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
+            visualEffectView.layer?.masksToBounds = true
             
             // 根据主题设置更新外观
             switch settings.floatingWindowTheme {
             case .system:
-                visualEffectView.material = .windowBackground
                 visualEffectView.appearance = nil
             case .light:
-                visualEffectView.material = .windowBackground
                 visualEffectView.appearance = NSAppearance(named: .aqua)
             case .dark:
-                visualEffectView.material = .windowBackground
                 visualEffectView.appearance = NSAppearance(named: .darkAqua)
             }
             
             // 根据是否使用毛玻璃效果来设置
             if settings.useBlurEffect {
                 visualEffectView.state = .active
+                visualEffectView.material = .hudWindow
                 window.backgroundColor = .clear
+                visualEffectView.alphaValue = 1.0
             } else {
                 visualEffectView.state = .inactive
+                visualEffectView.material = .windowBackground
                 window.backgroundColor = getWindowBackgroundColor()
+                visualEffectView.alphaValue = settings.floatingWindowOpacity
             }
+        }
+        
+        // 设置窗口属性
+        window.isOpaque = false
+        window.hasShadow = false
+        
+        // 设置窗口圆角
+        if let windowBackgroundView = window.contentView?.superview {
+            windowBackgroundView.wantsLayer = true
+            windowBackgroundView.layer?.cornerRadius = settings.floatingWindowCornerRadius
+            windowBackgroundView.layer?.masksToBounds = true
         }
         
         window.setContentSize(NSSize(width: settings.floatingWindowWidth, height: settings.floatingWindowHeight))
         updateWindowPosition(window)
-        window.orderFront(nil)
-    }
-    
-    // 隐藏预览窗口
-    func hidePreviewWindow() {
-        previewWindow?.orderOut(nil)
-    }
-    
-    // 更新窗口大小
-    private func updateWindowSize() {
-        if let window = window {
-            let settings = AppSettings.shared
-            window.setContentSize(NSSize(width: settings.floatingWindowWidth, height: settings.floatingWindowHeight))
-            updateWindowPosition(window)
-            
-            // 同时更新视觉效果
-            if let visualEffectView = window.contentView as? NSVisualEffectView {
-                visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
-                
-                // 根据主题设置更新外观
-                switch settings.floatingWindowTheme {
-                case .system:
-                    visualEffectView.material = .windowBackground
-                    visualEffectView.appearance = nil
-                case .light:
-                    visualEffectView.material = .windowBackground
-                    visualEffectView.appearance = NSAppearance(named: .aqua)
-                case .dark:
-                    visualEffectView.material = .windowBackground
-                    visualEffectView.appearance = NSAppearance(named: .darkAqua)
-                }
-                
-                // 根据是否使用毛玻璃效果来设置
-                if settings.useBlurEffect {
-                    visualEffectView.state = .active
-                    window.backgroundColor = .clear
-                } else {
-                    visualEffectView.state = .inactive
-                    window.backgroundColor = getWindowBackgroundColor()
-                }
-            }
-        }
     }
     
     private func updateWindowPosition(_ window: NSWindow) {
@@ -966,7 +909,8 @@ class DockIconsWindowController {
             // 创建并配置 NSVisualEffectView
             let visualEffectView = NSVisualEffectView()
             visualEffectView.blendingMode = .behindWindow
-            visualEffectView.state = .active
+            visualEffectView.material = settings.useBlurEffect ? .hudWindow : .windowBackground
+            visualEffectView.state = settings.useBlurEffect ? .active : .inactive
             visualEffectView.wantsLayer = true
             visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
             visualEffectView.layer?.masksToBounds = true
@@ -977,12 +921,25 @@ class DockIconsWindowController {
             hostingView.frame = visualEffectView.bounds
             hostingView.autoresizingMask = [.width, .height]
             
-            window.backgroundColor = .clear
+            // 设置窗口属性
             window.isOpaque = false
+            window.backgroundColor = settings.useBlurEffect ? .clear : getWindowBackgroundColor()
             window.level = .floating
             window.hasShadow = false
             window.collectionBehavior = [.canJoinAllSpaces, .stationary]
             window.isMovableByWindowBackground = true
+            
+            // 设置初始透明度
+            if !settings.useBlurEffect {
+                visualEffectView.alphaValue = settings.floatingWindowOpacity
+            }
+            
+            // 设置窗口圆角
+            if let windowBackgroundView = window.contentView?.superview {
+                windowBackgroundView.wantsLayer = true
+                windowBackgroundView.layer?.cornerRadius = settings.floatingWindowCornerRadius
+                windowBackgroundView.layer?.masksToBounds = true
+            }
             
             self.window = window
         }
@@ -990,43 +947,6 @@ class DockIconsWindowController {
         updateWindow()
         window?.orderFront(nil)
         isVisible = true
-    }
-    
-    // 更新窗口
-    private func updateWindow() {
-        guard let window = window else { return }
-        
-        let settings = AppSettings.shared
-        
-        // 更新 NSVisualEffectView 的圆角
-        if let visualEffectView = window.contentView as? NSVisualEffectView {
-            visualEffectView.layer?.cornerRadius = settings.floatingWindowCornerRadius
-            
-            // 根据主题设置更新外观
-            switch settings.floatingWindowTheme {
-            case .system:
-                visualEffectView.material = .windowBackground
-                visualEffectView.appearance = nil
-            case .light:
-                visualEffectView.material = .windowBackground
-                visualEffectView.appearance = NSAppearance(named: .aqua)
-            case .dark:
-                visualEffectView.material = .windowBackground
-                visualEffectView.appearance = NSAppearance(named: .darkAqua)
-            }
-            
-            // 根据是否使用毛玻璃效果来设置
-            if settings.useBlurEffect {
-                visualEffectView.state = .active
-                window.backgroundColor = .clear
-            } else {
-                visualEffectView.state = .inactive
-                window.backgroundColor = getWindowBackgroundColor()
-            }
-        }
-        
-        window.setContentSize(NSSize(width: settings.floatingWindowWidth, height: settings.floatingWindowHeight))
-        updateWindowPosition(window)
     }
     
     // 隐藏窗口
