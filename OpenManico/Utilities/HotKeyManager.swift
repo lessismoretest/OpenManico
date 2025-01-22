@@ -105,12 +105,16 @@ class HotKeyManager: ObservableObject {
         unregisterAllHotKeys()
         
         // 注册所有网站的快捷键
-        for website in websiteManager.websites where website.shortcutKey != nil {
+        let websites = websiteManager.getWebsites(mode: .all)
+        print("[HotKeyManager] 找到 \(websites.count) 个网站")
+        for website in websites where website.shortcutKey != nil {
+            print("[HotKeyManager] 注册网站快捷键: \(website.name) -> \(website.shortcutKey!)")
             registerWebsiteHotKey(key: website.shortcutKey!, websiteId: website.id)
         }
         
         // 注册所有应用的快捷键
         for shortcut in settings.shortcuts {
+            print("[HotKeyManager] 注册应用快捷键: \(shortcut.appName) -> \(shortcut.key)")
             registerAppHotKey(key: shortcut.key, bundleId: shortcut.bundleIdentifier)
         }
     }
@@ -307,7 +311,8 @@ class HotKeyManager: ObservableObject {
         print("[HotKeyManager] 开始处理网站热键事件: websiteId=\(websiteId)")
         
         // 查找并打开网站
-        if let website = websiteManager.websites.first(where: { $0.id == websiteId }) {
+        let websites = websiteManager.getWebsites(mode: .all)
+        if let website = websites.first(where: { $0.id == websiteId }) {
             print("[HotKeyManager] 找到对应网站: name=\(website.name), url=\(website.url)")
             guard let url = URL(string: website.url) else {
                 print("[HotKeyManager] ❌ URL无效: \(website.url)")

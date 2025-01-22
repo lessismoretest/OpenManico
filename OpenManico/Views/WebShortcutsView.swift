@@ -148,7 +148,7 @@ struct WebShortcutRow: View {
     @State private var showingWebsiteSelector = false
     
     private var website: Website? {
-        websiteManager.websites.first { $0.shortcutKey == key }
+        websiteManager.getWebsites(mode: .all).first { $0.shortcutKey == key }
     }
     
     private var keyText: String {
@@ -206,11 +206,21 @@ struct WebsiteSelectorView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var websiteManager = WebsiteManager.shared
     @StateObject private var hotKeyManager = HotKeyManager.shared
+    @StateObject private var settings = AppSettings.shared
     let key: String
     @State private var searchText = ""
+    @State private var selectedGroup: UUID
+    @State private var showingAddSheet = false
+    
+    init(key: String) {
+        self.key = key
+        // 初始化时设置默认分组
+        _selectedGroup = State(initialValue: WebsiteManager.shared.groups.first?.id ?? UUID())
+    }
     
     var filteredWebsites: [Website] {
-        let websites = websiteManager.websites
+        // 获取当前选中分组的网站
+        let websites = websiteManager.getWebsites(mode: .all, groupId: selectedGroup)
         if searchText.isEmpty {
             return websites
         }
@@ -222,9 +232,36 @@ struct WebsiteSelectorView: View {
     
     var body: some View {
         VStack {
+            // 分组选择器
+            HStack {
+                Picker("分组", selection: $selectedGroup) {
+                    ForEach(websiteManager.groups) { group in
+                        Text(group.name).tag(group.id)
+                    }
+                }
+                .pickerStyle(.menu)
+                
+                Spacer()
+                
+                Button(action: {
+                    // 关闭当前选择器
+                    dismiss()
+                    // 切换到网站列表页面并打开新建对话框
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("SwitchToWebsiteList"),
+                        object: nil,
+                        userInfo: ["showAddSheet": true]
+                    )
+                }) {
+                    Image(systemName: "plus.circle")
+                }
+                .help("添加新网站")
+            }
+            .padding()
+            
             TextField("搜索网站", text: $searchText)
                 .textFieldStyle(.roundedBorder)
-                .padding()
+                .padding(.horizontal)
             
             List(filteredWebsites) { website in
                 Button(action: {

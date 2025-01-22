@@ -317,40 +317,18 @@ struct AddWebsiteView: View {
             
             // 分组选择
             HStack {
-                Menu {
+                Text("分组：")
+                Picker("", selection: $selectedGroupId) {
                     ForEach(websiteManager.groups) { group in
-                        Button(action: {
-                            selectedGroupId = group.id
-                        }) {
-                            if selectedGroupId == group.id {
-                                Label(group.name, systemImage: "checkmark")
-                            } else {
-                                Text(group.name)
-                            }
-                        }
+                        Text(group.name).tag(group.id as UUID?)
                     }
-                    
-                    Divider()
-                    
-                    Button(action: { showingGroupManagement = true }) {
-                        Label("管理分组...", systemImage: "folder.badge.gearshape")
-                    }
-                } label: {
-                    HStack {
-                        Text(selectedGroupId.flatMap { id in
-                            websiteManager.groups.first { $0.id == id }?.name
-                        } ?? "选择分组")
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(6)
                 }
-                .menuStyle(.borderlessButton)
                 .frame(width: 200)
+                
+                Button(action: { showingGroupManagement = true }) {
+                    Image(systemName: "folder.badge.plus")
+                }
+                .buttonStyle(.borderless)
             }
             
             VStack(alignment: .leading, spacing: 8) {
@@ -411,12 +389,37 @@ struct AddWebsiteView: View {
         }
     }
     
-    private func fetchIcon(for url: String) {
-        let dummyWebsite = Website(url: url, name: "")
+    private func fetchIcon(for urlString: String) {
         Task {
-            await dummyWebsite.fetchIcon { fetchedIcon in
-                DispatchQueue.main.async {
-                    self.icon = fetchedIcon
+            if let url = URL(string: urlString),
+               let host = url.host {
+                // 尝试从 Google 获取图标
+                if let googleFaviconURL = URL(string: "https://www.google.com/s2/favicons?domain=\(host)&sz=64") {
+                    do {
+                        let (data, _) = try await URLSession.shared.data(from: googleFaviconURL)
+                        if let image = NSImage(data: data) {
+                            await MainActor.run {
+                                self.icon = image
+                            }
+                            return
+                        }
+                    } catch {
+                        print("Failed to fetch icon from Google: \(error)")
+                    }
+                }
+                
+                // 如果从 Google 获取失败，尝试从网站根目录获取
+                if let faviconURL = URL(string: "\(url.scheme ?? "https")://\(host)/favicon.ico") {
+                    do {
+                        let (data, _) = try await URLSession.shared.data(from: faviconURL)
+                        if let image = NSImage(data: data) {
+                            await MainActor.run {
+                                self.icon = image
+                            }
+                        }
+                    } catch {
+                        print("Failed to fetch icon from website: \(error)")
+                    }
                 }
             }
         }

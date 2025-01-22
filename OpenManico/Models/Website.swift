@@ -22,7 +22,12 @@ struct Website: Identifiable, Codable, Equatable {
         self.url = url
         self.name = name
         self.shortcutKey = shortcutKey
-        self.groupIds = groupIds
+        // 确保 groupIds 不为空，如果为空则使用默认分组
+        if groupIds.isEmpty, let defaultGroupId = WebsiteManager.shared.groups.first?.id {
+            self.groupIds = [defaultGroupId]
+        } else {
+            self.groupIds = groupIds
+        }
         self.isEnabled = isEnabled
     }
     
@@ -139,14 +144,33 @@ class WebsiteManager: ObservableObject {
     
     private init() {
         print("[WebsiteManager] 初始化")
-        loadWebsites()
+        print("[WebsiteManager] UserDefaults 中的所有 keys:")
+        for key in UserDefaults.standard.dictionaryRepresentation().keys {
+            print("  - \(key)")
+        }
+        
+        print("[WebsiteManager] 检查 websitesKey 是否存在:", UserDefaults.standard.object(forKey: websitesKey) != nil)
+        print("[WebsiteManager] 检查 groupsKey 是否存在:", UserDefaults.standard.object(forKey: groupsKey) != nil)
+        
+        // 先加载分组，确保有默认分组
         loadGroups()
+        
+        // 再加载网站，这样可以正确地将网站添加到默认分组
+        loadWebsites()
+        
+        print("[WebsiteManager] 初始化完成:")
+        print("  - 网站数量:", websites.count)
+        print("  - 分组数量:", groups.count)
+        for website in websites {
+            print("  - 网站:", website.name, "分组:", website.groupIds)
+        }
     }
     
     // MARK: - 网站管理方法
     
     /// 根据显示模式和分组获取网站列表
     func getWebsites(mode: WebsiteDisplayMode, groupId: UUID? = nil) -> [Website] {
+        print("[WebsiteManager] 获取网站列表: mode=\(mode), groupId=\(String(describing: groupId))")
         var filtered = websites
         
         // 按分组筛选
@@ -162,13 +186,26 @@ class WebsiteManager: ObservableObject {
             break // 显示所有
         }
         
-        return filtered.sorted(by: { $0.name < $1.name })
+        let result = filtered.sorted(by: { $0.name < $1.name })
+        print("[WebsiteManager] 返回 \(result.count) 个网站")
+        return result
     }
     
     /// 添加新网站
     func addWebsite(_ website: Website) {
         print("[WebsiteManager] 添加新网站: \(website.name)")
-        websites.append(website)
+        print("[WebsiteManager] 网站分组: \(website.groupIds)")
+        
+        // 如果网站没有分组，添加到默认分组
+        var websiteToAdd = website
+        if websiteToAdd.groupIds.isEmpty {
+            if let defaultGroup = groups.first {
+                print("[WebsiteManager] 网站没有分组，添加到默认分组: \(defaultGroup.name)")
+                websiteToAdd.groupIds = [defaultGroup.id]
+            }
+        }
+        
+        websites.append(websiteToAdd)
     }
     
     /// 更新网站
@@ -250,37 +287,80 @@ class WebsiteManager: ObservableObject {
     // MARK: - 数据持久化
     
     private func loadWebsites() {
-        print("[WebsiteManager] 加载网站数据")
+        print("[WebsiteManager] 开始加载网站数据")
         if let data = UserDefaults.standard.data(forKey: websitesKey) {
             do {
-                websites = try JSONDecoder().decode([Website].self, from: data)
-                print("[WebsiteManager] 成功加载 \(websites.count) 个网站")
+                var loadedWebsites = try JSONDecoder().decode([Website].self, from: data)
+                print("[WebsiteManager] 成功加载 \(loadedWebsites.count) 个网站")
+                
+                // 确保所有网站都有分组
+                if let defaultGroup = groups.first {
+                    print("[WebsiteManager] 检查并修复网站分组")
+                    
+                    // 去重：按 URL 分组，只保留每个 URL 的第一个网站
+                    var uniqueWebsites: [String: Website] = [:]
+                    for website in loadedWebsites {
+                        if uniqueWebsites[website.url] == nil {
+                            var websiteWithGroup = website
+                            if websiteWithGroup.groupIds.isEmpty {
+                                print("  - 将网站 \(websiteWithGroup.name) 添加到默认分组")
+                                websiteWithGroup.groupIds = [defaultGroup.id]
+                            }
+                            uniqueWebsites[website.url] = websiteWithGroup
+                        } else {
+                            print("  - 发现重复网站，跳过: \(website.name) (\(website.url))")
+                        }
+                    }
+                    
+                    // 转换回数组
+                    loadedWebsites = Array(uniqueWebsites.values)
+                    print("[WebsiteManager] 去重后剩余 \(loadedWebsites.count) 个网站")
+                    
+                    // 保存去重后的数据
+                    UserDefaults.standard.set(try? JSONEncoder().encode(loadedWebsites), forKey: websitesKey)
+                }
+                
+                websites = loadedWebsites
+                
+                for website in websites {
+                    print("  - 加载网站:", website.name, "分组:", website.groupIds)
+                }
             } catch {
                 print("[WebsiteManager] ❌ 加载网站数据失败: \(error)")
             }
+        } else {
+            print("[WebsiteManager] 没有找到网站数据")
         }
     }
     
     private func saveWebsites() {
-        print("[WebsiteManager] 保存网站数据")
+        print("[WebsiteManager] 开始保存网站数据: \(websites.count) 个网站")
         do {
             let data = try JSONEncoder().encode(websites)
             UserDefaults.standard.set(data, forKey: websitesKey)
             print("[WebsiteManager] ✅ 网站数据保存成功")
+            for website in websites {
+                print("  - 保存网站:", website.name, "分组:", website.groupIds)
+            }
         } catch {
             print("[WebsiteManager] ❌ 保存网站数据失败: \(error)")
         }
     }
     
     private func loadGroups() {
-        print("[WebsiteManager] 加载分组数据")
+        print("[WebsiteManager] 开始加载分组数据")
         if let data = UserDefaults.standard.data(forKey: groupsKey) {
             do {
                 groups = try JSONDecoder().decode([WebsiteGroup].self, from: data)
                 print("[WebsiteManager] 成功加载 \(groups.count) 个分组")
+                for group in groups {
+                    print("  - 加载分组:", group.name)
+                }
             } catch {
                 print("[WebsiteManager] ❌ 加载分组数据失败: \(error)")
             }
+        } else {
+            print("[WebsiteManager] 没有找到分组数据")
         }
         
         // 如果没有分组，创建默认分组
@@ -291,11 +371,14 @@ class WebsiteManager: ObservableObject {
     }
     
     private func saveGroups() {
-        print("[WebsiteManager] 保存分组数据")
+        print("[WebsiteManager] 开始保存分组数据: \(groups.count) 个分组")
         do {
             let data = try JSONEncoder().encode(groups)
             UserDefaults.standard.set(data, forKey: groupsKey)
             print("[WebsiteManager] ✅ 分组数据保存成功")
+            for group in groups {
+                print("  - 保存分组:", group.name)
+            }
         } catch {
             print("[WebsiteManager] ❌ 保存分组数据失败: \(error)")
         }

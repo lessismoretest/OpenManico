@@ -21,7 +21,7 @@ struct ExportSettingsView: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 Text("• \(settings.shortcuts.count) 个应用快捷键")
-                Text("• \(websiteManager.websites.filter { $0.shortcutKey != nil }.count) 个网站快捷键")
+                Text("• \(websiteManager.getWebsites(mode: .shortcutOnly).count) 个网站快捷键")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()

@@ -29,7 +29,7 @@ class ExportManager {
     func exportData() -> Data? {
         let websiteManager = WebsiteManager.shared
         let exportData = ExportData(
-            websites: websiteManager.websites,
+            websites: websiteManager.getWebsites(mode: .all),
             groups: websiteManager.groups
         )
         
@@ -52,8 +52,38 @@ class ExportManager {
             let importedData = try decoder.decode(ExportData.self, from: data)
             
             let websiteManager = WebsiteManager.shared
-            websiteManager.websites = importedData.websites
+            
+            // 先清除现有数据
+            websiteManager.groups = []
+            websiteManager.websites = []
+            
+            // 先导入分组
             websiteManager.groups = importedData.groups
+            
+            // 再导入网站，确保每个网站都被添加到正确的分组中
+            for website in importedData.websites {
+                // 如果网站没有分组，将其添加到默认分组中
+                if website.groupIds.isEmpty {
+                    if let defaultGroup = websiteManager.groups.first {
+                        var updatedWebsite = website
+                        updatedWebsite.groupIds = [defaultGroup.id]
+                        websiteManager.addWebsite(updatedWebsite)
+                    }
+                } else {
+                    // 确保网站的分组存在
+                    var updatedWebsite = website
+                    updatedWebsite.groupIds = website.groupIds.filter { groupId in
+                        websiteManager.groups.contains { $0.id == groupId }
+                    }
+                    
+                    // 如果过滤后没有有效的分组，添加到默认分组
+                    if updatedWebsite.groupIds.isEmpty, let defaultGroup = websiteManager.groups.first {
+                        updatedWebsite.groupIds = [defaultGroup.id]
+                    }
+                    
+                    websiteManager.addWebsite(updatedWebsite)
+                }
+            }
             
             print("[ExportManager] ✅ 导入数据成功")
             return true

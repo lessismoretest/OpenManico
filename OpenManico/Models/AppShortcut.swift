@@ -1002,7 +1002,7 @@ class AppSettings: ObservableObject {
     }
     
     var selectedWebShortcut: Website? {
-        let websites = WebsiteManager.shared.websites.filter { $0.shortcutKey != nil }
+        let websites = WebsiteManager.shared.getWebsites(mode: .shortcutOnly)
         let sortedWebsites = websites.sorted { $0.shortcutKey ?? "" < $1.shortcutKey ?? "" }
         guard selectedWebShortcutIndex >= 0 && selectedWebShortcutIndex < sortedWebsites.count else {
             return nil
