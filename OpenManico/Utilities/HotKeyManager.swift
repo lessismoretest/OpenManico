@@ -167,9 +167,9 @@ class HotKeyManager: ObservableObject {
         let modifiers: UInt32
         switch type {
         case .website:
-            modifiers = optionKeyMask | commandKeyMask  // 网站快捷键使用 Option + Command 键
+            modifiers = optionKeyMask | commandKeyMask  // 网站快捷键使用 Option + Command
         case .app:
-            modifiers = optionKeyMask   // 应用快捷键使用 Option 键
+            modifiers = optionKeyMask  // 应用快捷键只使用 Option
         }
         
         // 生成唯一的存储键
