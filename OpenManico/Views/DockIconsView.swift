@@ -67,10 +67,11 @@ struct DockIconsView: View {
             
             // 设置 Option 键监听
             optionKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { event in
-                let isOptionKeyPressed = event.modifierFlags.contains(.option)
-                if isOptionKeyPressed {
+                // 只有单独按 Option 键时才触发悬浮窗
+                let isOptionOnlyPressed = event.modifierFlags.intersection([.option, .command]) == .option
+                if isOptionOnlyPressed {
                     DockIconsWindowController.shared.showWindow()
-                } else {
+                } else if !event.modifierFlags.contains(.option) || event.modifierFlags.contains(.command) {
                     DockIconsWindowController.shared.hideWindow()
                 }
             }
