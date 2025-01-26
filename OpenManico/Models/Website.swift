@@ -178,13 +178,7 @@ class WebsiteManager: ObservableObject {
             filtered = filtered.filter { $0.groupIds.contains(groupId) }
         }
         
-        // 按显示模式筛选
-        switch mode {
-        case .shortcutOnly:
-            filtered = filtered.filter { $0.shortcutKey != nil }
-        case .all:
-            break // 显示所有
-        }
+        // 按显示模式筛选（已经只剩下 .all 模式）
         
         let result = filtered.sorted(by: { $0.name < $1.name })
         print("[WebsiteManager] 返回 \(result.count) 个网站")

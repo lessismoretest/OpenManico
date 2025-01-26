@@ -47,6 +47,11 @@ struct AppSelectionView: View {
         return systemApps + userApps
     }
     
+    // 检查应用是否已绑定到当前键
+    private func isAppSelected(bundleId: String) -> Bool {
+        return settings.shortcuts.contains { $0.key == key && $0.bundleIdentifier == bundleId }
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             Text("选择要绑定到 Option + \(key) 的应用")
@@ -75,7 +80,8 @@ struct AppSelectionView: View {
                             AppRowView(
                                 icon: app.icon,
                                 name: app.localizedName ?? "未知应用",
-                                bundleId: bundleId
+                                bundleId: bundleId,
+                                isSelected: isAppSelected(bundleId: bundleId)
                             ) {
                                 addShortcut(bundleId: bundleId, name: app.localizedName ?? "未知应用")
                             }
@@ -92,7 +98,8 @@ struct AppSelectionView: View {
                             AppRowView(
                                 icon: NSWorkspace.shared.icon(forFile: appURL.path),
                                 name: name,
-                                bundleId: bundleId
+                                bundleId: bundleId,
+                                isSelected: isAppSelected(bundleId: bundleId)
                             ) {
                                 addShortcut(bundleId: bundleId, name: name)
                             }
@@ -125,6 +132,7 @@ struct AppRowView: View {
     let icon: NSImage?
     let name: String
     let bundleId: String
+    let isSelected: Bool
     let action: () -> Void
     
     var body: some View {
@@ -143,7 +151,7 @@ struct AppRowView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                if NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) != nil {
+                if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
                 }

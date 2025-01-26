@@ -14,6 +14,9 @@ class HotKeyManager: ObservableObject {
     private var optionKeyMonitor: Any?
     private var isOptionKeyPressed = false
     private var websiteManager = WebsiteManager.shared
+    private var appSwitchObserver: Any?
+    private var currentApp: NSRunningApplication?
+    private var isFloatingWindowPinned = false // 添加悬浮窗常驻状态标志
     
     // 数字键的键码映射
     private let numberKeyCodes: [Int: Int] = [
@@ -58,9 +61,21 @@ class HotKeyManager: ObservableObject {
         "Z": 0x06
     ]
     
+    // 监听鼠标移动，检测是否在菜单栏区域
+    private var mouseMovementMonitor: Any?
+    private var isMouseInNotchArea = false
+    private var lastWindowShowTime = Date()
+    
     private init() {
         setupEventHandler()
         setupOptionKeyMonitor()
+        setupAppSwitchObserver()
+        setupMenuBarHoverMonitor()
+        
+        // 监听设置变化
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("SettingsChanged"), object: nil, queue: .main) { [weak self] _ in
+            self?.handleSettingsChanged()
+        }
     }
     
     deinit {
@@ -71,17 +86,148 @@ class HotKeyManager: ObservableObject {
         if let monitor = optionKeyMonitor {
             NSEvent.removeMonitor(monitor)
         }
+        if let observer = appSwitchObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+        removeMenuBarHoverMonitor()
+        
+        // 移除通知观察者
+        NotificationCenter.default.removeObserver(self)
     }
     
     private func setupOptionKeyMonitor() {
+        // 添加变量用于区分短按和双击
+        var lastPressTime = Date()
+        var lastReleaseTime = Date()
+        var clickCount = 0
+        var potentialDoubleClick = false // 标记是否可能为双击
+        var singleClickTimer: Timer? // 单击延迟处理计时器
+        var justHandledDoubleClick = false // 标记是否刚处理完双击事件
+        
         optionKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
+            guard let self = self else { return }
             let optionKeyPressed = event.modifierFlags.contains(.option)
-            if optionKeyPressed != self?.isOptionKeyPressed {
-                self?.isOptionKeyPressed = optionKeyPressed
+            
+            // Option键状态改变
+            if optionKeyPressed != self.isOptionKeyPressed {
+                self.isOptionKeyPressed = optionKeyPressed
+                
                 if optionKeyPressed {
-                    DockIconsWindowController.shared.showWindow()
+                    // ========== Option键被按下 ==========
+                    let now = Date()
+                    let timeSinceLastRelease = now.timeIntervalSince(lastReleaseTime)
+                    lastPressTime = now
+                    
+                    // 重置刚处理双击的标记
+                    if justHandledDoubleClick {
+                        print("👆 重置双击处理标记")
+                        justHandledDoubleClick = false
+                    }
+                    
+                    // 取消之前的定时器
+                    singleClickTimer?.invalidate()
+                    
+                    // 如果距上次释放时间小于0.5秒，可能是双击
+                    if timeSinceLastRelease < 0.5 {
+                        clickCount += 1
+                        potentialDoubleClick = true
+                        print("⚡ 检测到可能的双击: 点击计数=\(clickCount)")
+                    } else {
+                        clickCount = 1 // 重置点击计数
+                        potentialDoubleClick = false
+                        print("👇 首次点击或距离上次释放时间较长")
+                    }
                 } else {
-                    DockIconsWindowController.shared.hideWindow()
+                    // ========== Option键被松开 ==========
+                    lastReleaseTime = Date()
+                    let pressDuration = lastReleaseTime.timeIntervalSince(lastPressTime)
+                    
+                    // 双击检测：按下和松开的时间间隔短，且点击次数多于1次
+                    let isDoubleClick = clickCount >= 2 && pressDuration < 0.3
+                    
+                    // 检测到双击Option键，且悬浮窗功能已启用
+                    if isDoubleClick && AppSettings.shared.showFloatingWindow {
+                        // 标记我们刚刚处理了双击事件
+                        justHandledDoubleClick = true
+                        
+                        // 记录双击统计
+                        AppSettings.shared.incrementUsageCount(type: .optionDoubleClick)
+                        
+                        // 判断悬浮窗当前状态并进行相应处理
+                        if DockIconsWindowController.shared.isVisible {
+                            // 悬浮窗已显示，切换固定状态
+                            self.isFloatingWindowPinned = !self.isFloatingWindowPinned
+                            
+                            print("🔄 双击处理：悬浮窗已显示，固定状态切换为 \(self.isFloatingWindowPinned ? "固定" : "不固定")")
+                            
+                            if self.isFloatingWindowPinned {
+                                print("📌 双击效果：固定悬浮窗")
+                                // 固定悬浮窗
+                                DockIconsWindowController.shared.setPinned(true)
+                            } else {
+                                print("🔽 双击效果：取消固定并隐藏悬浮窗")
+                                // 先取消固定
+                                DockIconsWindowController.shared.setPinned(false)
+                                // 然后隐藏悬浮窗
+                                DockIconsWindowController.shared.hideWindow()
+                            }
+                        } else {
+                            // 悬浮窗未显示，显示并固定悬浮窗
+                            self.isFloatingWindowPinned = true
+                            print("📌 双击效果：悬浮窗未显示，显示并固定悬浮窗")
+                            DockIconsWindowController.shared.showWindow()
+                            DockIconsWindowController.shared.setPinned(true)
+                        }
+                        
+                        // 重置双击状态
+                        clickCount = 0
+                        potentialDoubleClick = false
+                    } else if pressDuration < 0.3 && !potentialDoubleClick {
+                        // 单击处理（如果是单击且不是双击的第一次点击）
+                        singleClickTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                            // 如果是短按并且启用了切换应用功能
+                            if AppSettings.shared.switchToLastAppWithOptionClick {
+                                print("🔍 单击检测：处理应用切换")
+                                
+                                // 记录单击统计
+                                AppSettings.shared.incrementUsageCount(type: .optionClick)
+                                
+                                // 获取当前应用
+                                if let currentApp = NSWorkspace.shared.frontmostApplication {
+                                    if let lastApp = self.lastActiveApp,
+                                       lastApp.bundleIdentifier != currentApp.bundleIdentifier, // 确保lastApp与currentApp不同
+                                       lastApp.isTerminated == false { // 确保上一个应用没有被终止
+                                        // 如果有上一个应用，切换到它
+                                        print("✅ 切换到上一个应用: \(lastApp.localizedName ?? ""), 从: \(currentApp.localizedName ?? "")")
+                                        
+                                        // 先保存当前应用
+                                        self.lastActiveApp = currentApp
+                                        
+                                        // 然后切换到上一个应用
+                                        DispatchQueue.main.async {
+                                            self.switchToApp(bundleIdentifier: lastApp.bundleIdentifier ?? "")
+                                        }
+                                    } else {
+                                        // 首次点击或上一个应用已失效，记录当前应用
+                                        print("📝 记录当前应用: \(currentApp.localizedName ?? "")")
+                                        self.lastActiveApp = currentApp
+                                    }
+                                }
+                            } else {
+                                print("⏭️ 单击检测：未启用应用切换功能")
+                            }
+                        }
+                    }
+                    
+                    // 如果不是常驻显示模式且没有刚处理过双击事件，则隐藏悬浮窗
+                    if !self.isFloatingWindowPinned && !justHandledDoubleClick {
+                        print("🔍 松开检测：悬浮窗未固定且非双击处理，隐藏悬浮窗")
+                        DockIconsWindowController.shared.hideWindow()
+                    } else if justHandledDoubleClick {
+                        print("🔍 松开检测：刚处理过双击，跳过隐藏操作")
+                    } else {
+                        print("🔍 松开检测：悬浮窗已固定，保持显示")
+                    }
                 }
             }
         }
@@ -133,21 +279,70 @@ class HotKeyManager: ObservableObject {
         unregisterAllHotKeys()
         hotKeyRefs.removeAll()
         
-        // 注册数字键快捷键
+        let appShortcuts = AppSettings.shared.shortcuts
+        let websites = websiteManager.getWebsites(mode: .all)
+        let configuredWebsiteKeys = websites.compactMap { $0.shortcutKey }
+        
+        // 创建热键映射表，用于调试
+        var keyMappings: [Int: String] = [:]
+        
+        // 输出调试信息
+        print("已配置的应用快捷键: \(appShortcuts.map { $0.key }.joined(separator: ", "))")
+        print("已配置的网站快捷键: \(configuredWebsiteKeys.joined(separator: ", "))")
+        
+        // 获取所有已配置快捷键
+        let configuredNumberKeys = appShortcuts.filter { Int($0.key) != nil }.map { $0.key }
+        let configuredLetterKeys = appShortcuts.filter { Int($0.key) == nil }.map { $0.key }
+        
+        // 只注册用户配置了的数字键快捷键
         for i in 1...9 {
-            registerHotKey(id: i, keyCode: numberKeyCodes[i]!, isWebsite: false)
-            registerHotKey(id: i + 100, keyCode: numberKeyCodes[i]!, isWebsite: true)  // 为网站使用不同的 ID
+            let key = String(i)
+            if configuredNumberKeys.contains(key) {
+                let appId = i
+                keyMappings[appId] = key
+                registerHotKey(id: appId, keyCode: numberKeyCodes[i]!, isWebsite: false)
+                print("注册应用快捷键: Option+\(key), ID: \(appId)")
+            }
+            // 只注册已配置的网站快捷键
+            if configuredWebsiteKeys.contains(key) {
+                let webId = i + 1000  // 使用更大的偏移值避免冲突
+                keyMappings[webId] = key
+                registerHotKey(id: webId, keyCode: numberKeyCodes[i]!, isWebsite: true)
+                print("注册网站快捷键: Option+Command+\(key), ID: \(webId)")
+            }
         }
         
-        // 注册字母键快捷键
+        // 只注册用户配置了的字母键快捷键
         for (letter, keyCode) in letterKeyCodes {
-            let id = 10 + Int(UnicodeScalar(letter)!.value)
-            registerHotKey(id: id, keyCode: keyCode, isWebsite: false)
-            registerHotKey(id: id + 100, keyCode: keyCode, isWebsite: true)  // 为网站使用不同的 ID
+            let asciiValue = Int(UnicodeScalar(letter)!.value)
+            
+            if configuredLetterKeys.contains(letter) {
+                let appId = 100 + asciiValue  // 新的ID生成方式
+                keyMappings[appId] = letter
+                let registrationResult = registerHotKey(id: appId, keyCode: keyCode, isWebsite: false)
+                print("注册应用快捷键: Option+\(letter), ID: \(appId) \(registrationResult ? "成功" : "失败")")
+            }
+            
+            // 只注册已配置的网站快捷键
+            if configuredWebsiteKeys.contains(letter) {
+                let webId = 1000 + asciiValue  // 使用更大的偏移值避免冲突
+                keyMappings[webId] = letter
+                let registrationResult = registerHotKey(id: webId, keyCode: keyCode, isWebsite: true)
+                print("注册网站快捷键: Option+Command+\(letter), ID: \(webId) \(registrationResult ? "成功" : "失败")")
+            }
         }
+        
+        // 保存热键映射表，用于调试
+        self.keyMappings = keyMappings
+        
+        print("已注册 \(hotKeyRefs.count) 个快捷键")
     }
     
-    private func registerHotKey(id: Int, keyCode: Int, isWebsite: Bool) {
+    // 热键映射表，用于调试
+    private var keyMappings: [Int: String] = [:]
+    
+    @discardableResult
+    private func registerHotKey(id: Int, keyCode: Int, isWebsite: Bool) -> Bool {
         var hotKeyID = EventHotKeyID()
         hotKeyID.signature = OSType(id)
         hotKeyID.id = UInt32(id)
@@ -168,8 +363,10 @@ class HotKeyManager: ObservableObject {
         if status == noErr {
             hotKeyRefs.append(hotKeyRef)
             print("Successfully registered hotkey for ID \(id)")
+            return true
         } else {
             print("Failed to register hotkey for ID \(id), error: \(status)")
+            return false
         }
     }
     
@@ -184,27 +381,35 @@ class HotKeyManager: ObservableObject {
     
     private func handleHotKey(_ id: UInt32) {
         let number = Int(id)
-        let isWebsite = number >= 100
-        let actualNumber = isWebsite ? number - 100 : number
+        
+        // 使用映射表直接获取键，避免复杂的计算
+        guard let key = keyMappings[number] else {
+            print("错误: 未找到ID \(number) 对应的热键")
+            return
+        }
+        
+        // 基于ID范围判断是否为网站快捷键
+        let isWebsite = number >= 1000
         
         DispatchQueue.main.async {
-            // 将 ID 转换为对应的键
-            let key: String
-            if actualNumber <= 9 {
-                key = String(actualNumber)
-            } else {
-                // 对于字母键，将 ID 转换回字母
-                // ID = 10 + ASCII值，所以需要减去10再转换
-                key = String(UnicodeScalar(actualNumber - 10)!)
-            }
+            print("触发热键 ID: \(id), 键: \(key), 是否网站: \(isWebsite)")
+            
+            // 增加使用次数
+            AppSettings.shared.incrementUsageCount(type: .shortcut)
             
             if isWebsite {
                 // 处理网站快捷键
                 let websites = self.websiteManager.getWebsites(mode: .all)
                 if let website = websites.first(where: { $0.shortcutKey == key }) {
+                    print("打开网站: \(website.name), URL: \(website.url)")
                     if let url = URL(string: website.url) {
                         NSWorkspace.shared.open(url)
                     }
+                    print("[HotKeyManager] 快捷键触发: 成功打开网站 \(website.name)")
+                    
+                    return
+                } else {
+                    print("未找到快捷键为 \(key) 的网站")
                 }
             } else {
                 // 处理应用快捷键
@@ -224,6 +429,9 @@ class HotKeyManager: ObservableObject {
                         self.lastActiveApp = NSWorkspace.shared.frontmostApplication
                         self.switchToApp(bundleIdentifier: shortcut.bundleIdentifier)
                     }
+                    print("[HotKeyManager] 全局快捷键触发: 成功启动应用 \(shortcut.appName)")
+                    
+                    return
                 } else {
                     print("No shortcut found for key \(key)")
                 }
@@ -234,14 +442,39 @@ class HotKeyManager: ObservableObject {
     func switchToApp(bundleIdentifier: String) {
         print("Attempting to switch to app with bundle ID: \(bundleIdentifier)")
         
+        // 特殊处理访达
+        if bundleIdentifier == "com.apple.finder" {
+            // 更简单的方法处理访达，完全避免使用AppleScript
+            
+            // 如果访达已运行，直接激活它
+            if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
+                let options: NSApplication.ActivationOptions = [.activateIgnoringOtherApps]
+                _ = app.activate(options: options)
+                print("已激活访达")
+            } else {
+                // 如果访达未运行，启动它
+                print("正在启动访达...")
+                NSWorkspace.shared.launchApplication("Finder")
+            }
+            
+            // 在激活后，使用特定的URL打开一个窗口，确保有至少一个窗口可见
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                // 打开一个新的访达窗口，访问home目录
+                NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser)
+            }
+            return
+        }
+        
         // 先尝试激活已运行的应用
         if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first {
-            let success = app.activate(options: [.activateIgnoringOtherApps])
+            // 使用更强的激活选项
+            let options: NSApplication.ActivationOptions = [.activateIgnoringOtherApps]
+            let success = app.activate(options: options)
             
             // 如果第一次激活失败，尝试强制激活
             if !success {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    _ = app.activate(options: [.activateIgnoringOtherApps])
+                    _ = app.activate(options: options)
                 }
             }
             print("Activating running app \(bundleIdentifier): \(success)")
@@ -253,7 +486,6 @@ class HotKeyManager: ObservableObject {
             do {
                 let config = NSWorkspace.OpenConfiguration()
                 config.activates = true
-                config.hidesOthers = false
                 
                 try NSWorkspace.shared.openApplication(
                     at: url,
@@ -272,5 +504,134 @@ class HotKeyManager: ObservableObject {
         registerAllHotKeys()
         // 触发观察者更新
         lastUpdateTime = Date()
+    }
+    
+    // 添加应用切换观察者
+    private func setupAppSwitchObserver() {
+        // 初始化当前应用
+        currentApp = NSWorkspace.shared.frontmostApplication
+        
+        // 监听应用切换事件
+        appSwitchObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            
+            // 获取新激活的应用
+            if let newApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
+                // 仅当通过非Option键切换应用时更新lastActiveApp
+                if !self.isOptionKeyPressed && self.currentApp != nil {
+                    // 将当前应用设为上一个应用
+                    self.lastActiveApp = self.currentApp
+                    print("应用切换: \(self.currentApp?.localizedName ?? "未知") -> \(newApp.localizedName ?? "未知")")
+                }
+                
+                // 更新当前应用
+                self.currentApp = newApp
+            }
+        }
+    }
+    
+    // 提供一个方法让DockIconsWindowController通知窗口已关闭
+    func notifyWindowClosed() {
+        // 不在单独的地方重置isFloatingWindowPinned，而是只记录日志
+        print("🔴 窗口关闭通知 - 悬浮窗固定状态：\(isFloatingWindowPinned ? "已固定" : "未固定")")
+        
+        // 注意：isFloatingWindowPinned的状态现在只在setupOptionKeyMonitor方法中维护
+        // 这里不再修改它，避免与双击处理逻辑冲突
+    }
+    
+    // 提供一个方法让其他类访问上一个活跃应用
+    func getLastActiveApp() -> NSRunningApplication? {
+        return lastActiveApp
+    }
+    
+    // 设置菜单栏区域鼠标悬停监控
+    private func setupMenuBarHoverMonitor() {
+        mouseMovementMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] event in
+            guard let self = self else { return }
+            
+            // 如果功能未启用，直接返回
+            if !AppSettings.shared.showOnMenuBarHover {
+                return
+            }
+            
+            // 获取当前鼠标位置
+            let mouseLocation = NSEvent.mouseLocation
+            
+            // 获取主屏幕
+            guard let screen = NSScreen.main else { return }
+            
+            // 计算菜单栏高度 (通常是24点)
+            let menuBarHeight: CGFloat = 24
+            
+            // 检查鼠标是否在菜单栏区域
+            let isInMenuBarArea = mouseLocation.y >= screen.frame.maxY - menuBarHeight
+            
+            // 计算屏幕中心区域（假设刘海区域是屏幕宽度的中间20%）
+            let screenWidth = screen.frame.width
+            let notchRegionWidth = screenWidth * 0.2
+            let notchLeft = (screenWidth - notchRegionWidth) / 2
+            let notchRight = notchLeft + notchRegionWidth
+            
+            // 检查鼠标是否在刘海区域
+            let isInNotchRegion = mouseLocation.x >= notchLeft && mouseLocation.x <= notchRight
+            
+            // 如果鼠标在菜单栏的刘海区域
+            let isInMenuBarNotchArea = isInMenuBarArea && isInNotchRegion
+            
+            // 状态变化：移入刘海区域
+            if isInMenuBarNotchArea && !self.isMouseInNotchArea {
+                self.isMouseInNotchArea = true
+                print("🖱️ 鼠标进入菜单栏刘海区域")
+                
+                // 显示悬浮窗，但不设置为常驻
+                if !self.isFloatingWindowPinned {
+                    self.lastWindowShowTime = Date()
+                    DockIconsWindowController.shared.showWindow()
+                }
+            }
+            // 状态变化：移出刘海区域
+            else if !isInMenuBarNotchArea && self.isMouseInNotchArea {
+                self.isMouseInNotchArea = false
+                print("🖱️ 鼠标离开菜单栏刘海区域")
+                
+                // 如果悬浮窗不是常驻状态，隐藏窗口
+                if !self.isFloatingWindowPinned {
+                    // 添加一个短暂延迟，避免鼠标在区域边缘移动时窗口频繁显示/隐藏
+                    let now = Date()
+                    if now.timeIntervalSince(self.lastWindowShowTime) > 1.0 {
+                        DockIconsWindowController.shared.hideWindow()
+                    }
+                }
+            }
+        }
+    }
+    
+    // 移除菜单栏区域鼠标悬停监控
+    private func removeMenuBarHoverMonitor() {
+        if let monitor = mouseMovementMonitor {
+            NSEvent.removeMonitor(monitor)
+            mouseMovementMonitor = nil
+        }
+    }
+    
+    // 处理设置变化
+    private func handleSettingsChanged() {
+        // 刘海区域监听设置变化时，重新配置监听器
+        if AppSettings.shared.showOnMenuBarHover {
+            // 确保监听器已设置
+            if mouseMovementMonitor == nil {
+                setupMenuBarHoverMonitor()
+            }
+        } else {
+            // 如果功能已禁用，移除监听器
+            removeMenuBarHoverMonitor()
+            
+            // 重置状态
+            isMouseInNotchArea = false
+        }
     }
 } 

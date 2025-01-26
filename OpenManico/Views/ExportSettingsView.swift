@@ -8,6 +8,7 @@ struct ExportSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var settings = AppSettings.shared
     @StateObject private var websiteManager = WebsiteManager.shared
+    @StateObject private var appGroupManager = AppGroupManager.shared
     @State private var exportURL: URL?
     @State private var showingError = false
     
@@ -21,7 +22,9 @@ struct ExportSettingsView: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 Text("• \(settings.shortcuts.count) 个应用快捷键")
-                Text("• \(websiteManager.getWebsites(mode: .shortcutOnly).count) 个网站快捷键")
+                Text("• \(websiteManager.getWebsites(mode: .all).filter { $0.shortcutKey != nil }.count) 个网站快捷键")
+                Text("• \(websiteManager.groups.count) 个网站分组")
+                Text("• \(appGroupManager.groups.count) 个应用分组")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
@@ -35,8 +38,15 @@ struct ExportSettingsView: View {
                 .buttonStyle(.bordered)
                 
                 Button("导出") {
-                    if let url = settings.exportSettings() {
-                        exportURL = url
+                    if let data = ExportManager.shared.exportData() {
+                        let tempDir = FileManager.default.temporaryDirectory
+                        let exportURL = tempDir.appendingPathComponent("OpenManico_Settings.json")
+                        do {
+                            try data.write(to: exportURL)
+                            self.exportURL = exportURL
+                        } catch {
+                            showingError = true
+                        }
                     } else {
                         showingError = true
                     }
