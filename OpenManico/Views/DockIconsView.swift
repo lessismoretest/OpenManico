@@ -586,6 +586,7 @@ private struct WebShortcutToolbarView: View {
 
 struct IconView<Label: View>: View {
     @StateObject private var settings = AppSettings.shared
+    @State private var isHovering = false
     let icon: NSImage
     let size: CGFloat
     let label: Label
@@ -618,10 +619,11 @@ struct IconView<Label: View>: View {
                     .cornerRadius(settings.iconCornerRadius)
                     .overlay(
                         RoundedRectangle(cornerRadius: settings.iconCornerRadius)
-                            .stroke(settings.iconBorderColor, lineWidth: 0)
+                            .stroke(settings.iconBorderColor, lineWidth: isHovering ? settings.iconBorderWidth : 0)
                     )
                     .shadow(radius: settings.useIconShadow ? settings.iconShadowRadius : 0)
-                    .scaleEffect(1.0)
+                    .scaleEffect(settings.useHoverAnimation && isHovering ? settings.hoverScale : 1.0)
+                    .animation(.easeInOut(duration: settings.hoverAnimationDuration), value: isHovering)
                 
                 if let key = shortcutKey {
                     if isWebsite && settings.showWebShortcutLabel {
@@ -656,6 +658,9 @@ struct IconView<Label: View>: View {
                                    y: labelOffset.y + settings.appShortcutLabelOffsetY)
                     }
                 }
+            }
+            .onHover { hovering in
+                isHovering = hovering
             }
             .onTapGesture {
                 onTap?()

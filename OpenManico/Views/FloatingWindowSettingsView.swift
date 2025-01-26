@@ -46,6 +46,11 @@ struct FloatingWindowSettingsView: View {
                     InteractionSection(settings: settings)
                 }
                 
+                // 悬停动画设置组
+                Group {
+                    HoverAnimationSection(settings: settings)
+                }
+                
                 // 说明信息组
                 Group {
                     InstructionSection()
@@ -274,16 +279,6 @@ private struct IconSettingsSection: View {
             )
             
             SliderRow(
-                title: "边框宽度",
-                value: $settings.iconBorderWidth,
-                range: 0...4,
-                step: 0.5,
-                valueFormatter: { String(format: "%.1f", $0) }
-            )
-            
-            ColorPicker("边框颜色", selection: $settings.iconBorderColor)
-            
-            SliderRow(
                 title: "图标间距",
                 value: $settings.iconSpacing,
                 range: 0...16,
@@ -488,7 +483,20 @@ private struct InteractionSection: View {
                 .onChange(of: settings.openOnMouseHover) { _ in
                     settings.saveSettings()
                 }
-            
+        } header: {
+            Text("交互行为")
+        }
+    }
+}
+
+/**
+ * 悬停动画设置区域
+ */
+private struct HoverAnimationSection: View {
+    @ObservedObject var settings: AppSettings
+    
+    var body: some View {
+        Section {
             Toggle("启用悬停动画", isOn: $settings.useHoverAnimation)
             
             if settings.useHoverAnimation {
@@ -507,9 +515,19 @@ private struct InteractionSection: View {
                     step: 0.05,
                     valueFormatter: { String(format: "%.2f", $0) }
                 )
+                
+                SliderRow(
+                    title: "边框宽度",
+                    value: $settings.iconBorderWidth,
+                    range: 0...4,
+                    step: 0.5,
+                    valueFormatter: { String(format: "%.1f", $0) }
+                )
+                
+                ColorPicker("边框颜色", selection: $settings.iconBorderColor)
             }
         } header: {
-            Text("交互行为")
+            Text("悬停动画")
         }
     }
 }
