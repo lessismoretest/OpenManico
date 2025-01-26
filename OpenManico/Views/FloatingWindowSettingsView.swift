@@ -127,7 +127,7 @@ private struct WindowSizeSection: View {
             SliderRow(
                 title: "窗口高度",
                 value: $settings.floatingWindowHeight,
-                range: 300...800,
+                range: 200...800,
                 step: 50,
                 onChange: { DockIconsWindowController.shared.updateWindow() }
             )
@@ -511,7 +511,7 @@ private struct HoverAnimationSection: View {
                 SliderRow(
                     title: "动画时长",
                     value: $settings.hoverAnimationDuration,
-                    range: 0.1...0.5,
+                    range: 0.1...0.8,
                     step: 0.05,
                     valueFormatter: { String(format: "%.2f", $0) }
                 )
