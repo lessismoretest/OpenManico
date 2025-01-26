@@ -5,13 +5,17 @@ import Foundation
  */
 struct ExportData: Codable {
     var websites: [Website]
-    var groups: [WebsiteGroup]
+    var websiteGroups: [WebsiteGroup]
+    var appGroups: [AppGroup]
+    var appShortcuts: [AppShortcut]
     var timestamp: Date
     var version: String
     
-    init(websites: [Website], groups: [WebsiteGroup]) {
+    init(websites: [Website], websiteGroups: [WebsiteGroup], appGroups: [AppGroup], appShortcuts: [AppShortcut]) {
         self.websites = websites
-        self.groups = groups
+        self.websiteGroups = websiteGroups
+        self.appGroups = appGroups
+        self.appShortcuts = appShortcuts
         self.timestamp = Date()
         self.version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     }
@@ -28,9 +32,14 @@ class ExportManager {
     /// 导出数据
     func exportData() -> Data? {
         let websiteManager = WebsiteManager.shared
+        let appGroupManager = AppGroupManager.shared
+        let settings = AppSettings.shared
+        
         let exportData = ExportData(
             websites: websiteManager.getWebsites(mode: .all),
-            groups: websiteManager.groups
+            websiteGroups: websiteManager.groups,
+            appGroups: appGroupManager.groups,
+            appShortcuts: settings.shortcuts
         )
         
         do {
@@ -52,15 +61,25 @@ class ExportManager {
             let importedData = try decoder.decode(ExportData.self, from: data)
             
             let websiteManager = WebsiteManager.shared
+            let appGroupManager = AppGroupManager.shared
+            let settings = AppSettings.shared
             
             // 先清除现有数据
             websiteManager.groups = []
             websiteManager.websites = []
+            appGroupManager.groups = []
+            settings.shortcuts = []
             
-            // 先导入分组
-            websiteManager.groups = importedData.groups
+            // 导入网站分组
+            websiteManager.groups = importedData.websiteGroups
             
-            // 再导入网站，确保每个网站都被添加到正确的分组中
+            // 导入应用分组
+            appGroupManager.groups = importedData.appGroups
+            
+            // 导入应用快捷键
+            settings.shortcuts = importedData.appShortcuts
+            
+            // 导入网站
             for website in importedData.websites {
                 // 如果网站没有分组，将其添加到默认分组中
                 if website.groupIds.isEmpty {
