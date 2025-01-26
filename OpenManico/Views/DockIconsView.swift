@@ -298,6 +298,11 @@ private struct TopToolbarView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .onHover { hovering in
+                    if hovering {
+                        selectedAppGroup = nil
+                    }
+                }
                 
                 // 分组按钮
                 ForEach(AppGroupManager.shared.groups) { group in
@@ -550,6 +555,11 @@ private struct WebShortcutToolbarView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .onHover { hovering in
+                    if hovering {
+                        selectedWebGroup = nil
+                    }
+                }
                 
                 // 分组按钮
                 ForEach(websiteManager.groups) { group in
@@ -579,17 +589,14 @@ struct IconView<Label: View>: View {
     let icon: NSImage
     let size: CGFloat
     let label: Label
-    let onHover: ((Bool) -> Void)?
     let onTap: (() -> Void)?
     let shortcutKey: String?
     let isWebsite: Bool
-    @State private var isHovering = false
     
     init(
         icon: NSImage,
         size: CGFloat,
         @ViewBuilder label: () -> Label,
-        onHover: ((Bool) -> Void)? = nil,
         onTap: (() -> Void)? = nil,
         shortcutKey: String? = nil,
         isWebsite: Bool = false
@@ -597,7 +604,6 @@ struct IconView<Label: View>: View {
         self.icon = icon
         self.size = size
         self.label = label()
-        self.onHover = onHover
         self.onTap = onTap
         self.shortcutKey = shortcutKey
         self.isWebsite = isWebsite
@@ -612,11 +618,10 @@ struct IconView<Label: View>: View {
                     .cornerRadius(settings.iconCornerRadius)
                     .overlay(
                         RoundedRectangle(cornerRadius: settings.iconCornerRadius)
-                            .stroke(settings.iconBorderColor, lineWidth: isHovering ? settings.iconBorderWidth : 0)
+                            .stroke(settings.iconBorderColor, lineWidth: 0)
                     )
                     .shadow(radius: settings.useIconShadow ? settings.iconShadowRadius : 0)
-                    .scaleEffect(settings.useHoverAnimation && isHovering ? settings.hoverScale : 1.0)
-                    .animation(.easeInOut(duration: settings.hoverAnimationDuration), value: isHovering)
+                    .scaleEffect(1.0)
                 
                 if let key = shortcutKey {
                     if isWebsite && settings.showWebShortcutLabel {
@@ -657,10 +662,6 @@ struct IconView<Label: View>: View {
             }
             
             label
-        }
-        .onHover { hovering in
-            isHovering = hovering
-            onHover?(hovering)
         }
     }
     
