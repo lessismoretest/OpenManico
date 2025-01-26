@@ -230,6 +230,11 @@ struct WebsiteSelectorView: View {
         }
     }
     
+    // 检查网站是否已被绑定为快捷键
+    private func isWebsiteSelected(website: Website) -> Bool {
+        return website.shortcutKey != nil
+    }
+    
     var body: some View {
         VStack {
             // 分组选择器
@@ -286,11 +291,19 @@ struct WebsiteSelectorView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        
+                        Spacer()
+                        
+                        // 显示已绑定快捷键标识
+                        if isWebsiteSelected(website: website) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                        }
                     }
                 }
                 .buttonStyle(.plain)
             }
         }
-        .frame(width: 400, height: 300)
+        .frame(width: 500, height: 300)
     }
 } 

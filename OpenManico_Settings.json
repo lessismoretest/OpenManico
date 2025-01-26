@@ -1,0 +1,896 @@
+{
+  "appGroups" : [
+    {
+      "id" : "9353E28E-4580-420A-961F-7B2B88DBF114",
+      "apps" : [
+        {
+          "bundleId" : "com.apple.ActivityMonitor",
+          "name" : "Activity Monitor"
+        },
+        {
+          "bundleId" : "com.apple.airport.airportutility",
+          "name" : "AirPort Utility"
+        },
+        {
+          "bundleId" : "com.apple.AppStore",
+          "name" : "App Store"
+        },
+        {
+          "bundleId" : "com.apple.archiveutility",
+          "name" : "Archive Utility"
+        },
+        {
+          "bundleId" : "com.apple.audio.AudioMIDISetup",
+          "name" : "Audio MIDI Setup"
+        },
+        {
+          "bundleId" : "com.apple.Automator",
+          "name" : "Automator"
+        },
+        {
+          "bundleId" : "com.apple.BluetoothFileExchange",
+          "name" : "Bluetooth File Exchange"
+        },
+        {
+          "bundleId" : "com.apple.iBooksX",
+          "name" : "Books"
+        },
+        {
+          "bundleId" : "com.apple.bootcampassistant",
+          "name" : "Boot Camp Assistant"
+        },
+        {
+          "bundleId" : "com.apple.calculator",
+          "name" : "Calculator"
+        },
+        {
+          "bundleId" : "com.apple.Chess",
+          "name" : "Chess"
+        },
+        {
+          "bundleId" : "com.apple.clock",
+          "name" : "Clock"
+        },
+        {
+          "bundleId" : "com.apple.ColorSyncUtility",
+          "name" : "ColorSync Utility"
+        },
+        {
+          "bundleId" : "com.apple.Console",
+          "name" : "Console"
+        },
+        {
+          "bundleId" : "com.apple.AddressBook",
+          "name" : "Contacts"
+        },
+        {
+          "bundleId" : "com.apple.Dictionary",
+          "name" : "Dictionary"
+        },
+        {
+          "bundleId" : "com.apple.DigitalColorMeter",
+          "name" : "Digital Color Meter"
+        },
+        {
+          "bundleId" : "com.apple.DiskUtility",
+          "name" : "Disk Utility"
+        },
+        {
+          "bundleId" : "com.apple.FaceTime",
+          "name" : "FaceTime"
+        },
+        {
+          "bundleId" : "com.apple.findmy",
+          "name" : "FindMy"
+        },
+        {
+          "bundleId" : "com.apple.FontBook",
+          "name" : "Font Book"
+        },
+        {
+          "bundleId" : "com.apple.freeform",
+          "name" : "Freeform"
+        },
+        {
+          "bundleId" : "com.apple.grapher",
+          "name" : "Grapher"
+        },
+        {
+          "bundleId" : "com.apple.Home",
+          "name" : "Home"
+        },
+        {
+          "bundleId" : "com.apple.Image_Capture",
+          "name" : "Image Capture"
+        },
+        {
+          "bundleId" : "com.apple.GenerativePlaygroundApp",
+          "name" : "Image Playground"
+        },
+        {
+          "bundleId" : "com.apple.iWork.Keynote",
+          "name" : "Keynote"
+        },
+        {
+          "bundleId" : "com.apple.launchpad.launcher",
+          "name" : "Launchpad"
+        },
+        {
+          "bundleId" : "com.apple.MobileSMS",
+          "name" : "Messages"
+        },
+        {
+          "bundleId" : "com.apple.MigrateAssistant",
+          "name" : "Migration Assistant"
+        },
+        {
+          "bundleId" : "com.apple.exposelauncher",
+          "name" : "Mission Control"
+        },
+        {
+          "bundleId" : "com.apple.news",
+          "name" : "News"
+        },
+        {
+          "bundleId" : "com.apple.Passwords",
+          "name" : "Passwords"
+        },
+        {
+          "bundleId" : "com.apple.PhotoBooth",
+          "name" : "Photo Booth"
+        },
+        {
+          "bundleId" : "com.apple.podcasts",
+          "name" : "Podcasts"
+        },
+        {
+          "bundleId" : "com.apple.Preview",
+          "name" : "Preview"
+        },
+        {
+          "bundleId" : "com.apple.printcenter",
+          "name" : "Print Center"
+        },
+        {
+          "bundleId" : "com.apple.QuickTimePlayerX",
+          "name" : "QuickTime Player"
+        },
+        {
+          "bundleId" : "com.apple.reminders",
+          "name" : "Reminders"
+        },
+        {
+          "bundleId" : "com.apple.SFSymbols",
+          "name" : "SF Symbols"
+        },
+        {
+          "bundleId" : "com.apple.Safari",
+          "name" : "Safari"
+        },
+        {
+          "bundleId" : "com.apple.ScreenSharing",
+          "name" : "Screen Sharing"
+        },
+        {
+          "bundleId" : "com.apple.screenshot.launcher",
+          "name" : "Screenshot"
+        },
+        {
+          "bundleId" : "com.apple.ScriptEditor2",
+          "name" : "Script Editor"
+        },
+        {
+          "bundleId" : "com.apple.shortcuts",
+          "name" : "Shortcuts"
+        },
+        {
+          "bundleId" : "com.apple.siri.launcher",
+          "name" : "Siri"
+        },
+        {
+          "bundleId" : "com.apple.Stickies",
+          "name" : "Stickies"
+        },
+        {
+          "bundleId" : "com.apple.stocks",
+          "name" : "Stocks"
+        },
+        {
+          "bundleId" : "com.apple.SystemProfiler",
+          "name" : "System Information"
+        },
+        {
+          "bundleId" : "com.apple.TV",
+          "name" : "TV"
+        },
+        {
+          "bundleId" : "com.apple.backup.launcher",
+          "name" : "Time Machine"
+        },
+        {
+          "bundleId" : "com.apple.helpviewer",
+          "name" : "Tips"
+        },
+        {
+          "bundleId" : "com.apple.VoiceMemos",
+          "name" : "VoiceMemos"
+        },
+        {
+          "bundleId" : "com.apple.VoiceOverUtility",
+          "name" : "VoiceOver Utility"
+        },
+        {
+          "bundleId" : "com.apple.weather",
+          "name" : "Weather"
+        },
+        {
+          "bundleId" : "com.apple.dt.Xcode",
+          "name" : "Xcode"
+        },
+        {
+          "bundleId" : "com.apple.ScreenContinuity",
+          "name" : "iPhone Mirroring"
+        },
+        {
+          "bundleId" : "com.apple.Maps",
+          "name" : "地图"
+        },
+        {
+          "bundleId" : "com.apple.Notes",
+          "name" : "备忘录"
+        },
+        {
+          "bundleId" : "com.apple.TextEdit",
+          "name" : "文本编辑"
+        },
+        {
+          "bundleId" : "com.apple.iCal",
+          "name" : "日历"
+        },
+        {
+          "bundleId" : "com.apple.Photos",
+          "name" : "照片"
+        },
+        {
+          "bundleId" : "com.apple.systempreferences",
+          "name" : "系统设置"
+        },
+        {
+          "bundleId" : "com.apple.Terminal",
+          "name" : "终端"
+        },
+        {
+          "bundleId" : "com.apple.finder",
+          "name" : "访达"
+        },
+        {
+          "bundleId" : "com.apple.mail",
+          "name" : "邮件"
+        },
+        {
+          "bundleId" : "com.apple.Music",
+          "name" : "音乐"
+        }
+      ],
+      "name" : ""
+    },
+    {
+      "id" : "CFA3F72E-0465-4C4F-B71B-BBA6755286D2",
+      "apps" : [
+        {
+          "name" : "Chrome",
+          "bundleId" : "com.google.Chrome"
+        },
+        {
+          "name" : "Firefox",
+          "bundleId" : "org.mozilla.firefox"
+        },
+        {
+          "name" : "Arc",
+          "bundleId" : "company.thebrowser.Browser"
+        },
+        {
+          "name" : "Fellou",
+          "bundleId" : "com.fellou.ai"
+        },
+        {
+          "name" : "Safari",
+          "bundleId" : "com.apple.Safari"
+        },
+        {
+          "name" : "Zen",
+          "bundleId" : "app.zen-browser.zen"
+        }
+      ],
+      "name" : "🏄🏻 browser"
+    },
+    {
+      "id" : "1694092F-A4B8-4611-9EC6-EE2466C3D672",
+      "apps" : [
+        {
+          "name" : "DingTalk",
+          "bundleId" : "com.alibaba.DingTalkMac"
+        },
+        {
+          "name" : "Discord",
+          "bundleId" : "com.hnc.Discord"
+        },
+        {
+          "name" : "Feishu",
+          "bundleId" : "com.electron.lark"
+        },
+        {
+          "name" : "QQ",
+          "bundleId" : "com.tencent.qq"
+        },
+        {
+          "name" : "Telegram",
+          "bundleId" : "ru.keepcoder.Telegram"
+        },
+        {
+          "name" : "WeChat",
+          "bundleId" : "com.tencent.xinWeChat"
+        },
+        {
+          "name" : "腾讯会议",
+          "bundleId" : "com.tencent.meeting"
+        },
+        {
+          "name" : "WhatsApp",
+          "bundleId" : "net.whatsapp.WhatsApp"
+        },
+        {
+          "name" : "企业微信",
+          "bundleId" : "com.tencent.WeWorkMac"
+        }
+      ],
+      "name" : "💬 IM"
+    },
+    {
+      "id" : "D659117B-615A-4A8E-9502-4CC61B74971C",
+      "apps" : [
+        {
+          "name" : "Code",
+          "bundleId" : "com.microsoft.VSCode"
+        },
+        {
+          "name" : "Cursor",
+          "bundleId" : "com.todesktop.230313mzl4w4u92"
+        },
+        {
+          "name" : "Dash",
+          "bundleId" : "com.kapeli.dashdoc"
+        },
+        {
+          "name" : "GitHub Desktop",
+          "bundleId" : "com.github.GitHubClient"
+        },
+        {
+          "name" : "Xcode",
+          "bundleId" : "com.apple.dt.Xcode"
+        },
+        {
+          "name" : "Alibaba Cloud Client",
+          "bundleId" : "com.alibaba-cloud.client"
+        },
+        {
+          "name" : "Ghostty",
+          "bundleId" : "com.mitchellh.ghostty"
+        },
+        {
+          "name" : "MySQLWorkbench",
+          "bundleId" : "com.oracle.workbench.MySQLWorkbench"
+        },
+        {
+          "name" : "Navicat for MySQL",
+          "bundleId" : "com.navicat.NavicatForMySQL"
+        },
+        {
+          "name" : "PyCharm",
+          "bundleId" : "com.jetbrains.pycharm.ce"
+        },
+        {
+          "name" : "SnippetsLab",
+          "bundleId" : "com.renfei.SnippetsLab"
+        },
+        {
+          "name" : "Sublime Text",
+          "bundleId" : "com.sublimetext.4"
+        },
+        {
+          "name" : "Warp",
+          "bundleId" : "dev.warp.Warp-Stable"
+        },
+        {
+          "name" : "Windsurf",
+          "bundleId" : "com.exafunction.windsurf"
+        },
+        {
+          "name" : "Trae",
+          "bundleId" : "com.trae.app"
+        },
+        {
+          "name" : "Developer",
+          "bundleId" : "developer.apple.wwdc-Release"
+        },
+        {
+          "name" : "Docker",
+          "bundleId" : "com.docker.docker"
+        },
+        {
+          "name" : "DMG Canvas",
+          "bundleId" : "com.araelium.dmgcanvas"
+        },
+        {
+          "name" : "Navicat Premium Lite",
+          "bundleId" : "com.navicat.NavicatPremiumLite"
+        },
+        {
+          "name" : "Pinokio",
+          "bundleId" : "computer.pinokio"
+        },
+        {
+          "name" : "Postman",
+          "bundleId" : "com.postmanlabs.mac"
+        },
+        {
+          "name" : "Sourcetree",
+          "bundleId" : "com.torusknot.SourceTreeNotMAS"
+        },
+        {
+          "name" : "Terminal",
+          "bundleId" : "com.apple.Terminal"
+        },
+        {
+          "name" : "Tower",
+          "bundleId" : "com.fournova.Tower3"
+        },
+        {
+          "name" : "GitButler",
+          "bundleId" : "com.gitbutler.app"
+        }
+      ],
+      "name" : "🐒 coding"
+    },
+    {
+      "id" : "7E2AC426-E412-4663-B858-02B6A1D9EA82",
+      "apps" : [
+        {
+          "name" : "Figma",
+          "bundleId" : "com.figma.Desktop"
+        },
+        {
+          "name" : "Pixelmator Pro",
+          "bundleId" : "com.pixelmatorteam.pixelmator.x"
+        },
+        {
+          "name" : "RightFont",
+          "bundleId" : "com.rightfontapp.RightFont5"
+        },
+        {
+          "name" : "SF Symbols",
+          "bundleId" : "com.apple.SFSymbols"
+        },
+        {
+          "name" : "Sketch",
+          "bundleId" : "com.bohemiancoding.sketch3"
+        },
+        {
+          "name" : "Sip",
+          "bundleId" : "io.sipapp.Sip-paddle"
+        },
+        {
+          "name" : "HiPixel",
+          "bundleId" : "tech.5km.HiPixel"
+        },
+        {
+          "name" : "ImageOptim",
+          "bundleId" : "net.pornel.ImageOptim"
+        }
+      ],
+      "name" : "🌷 design"
+    },
+    {
+      "id" : "1003E3BA-8085-47C3-93EB-C851749B7CC7",
+      "apps" : [
+        {
+          "bundleId" : "com.kimen.aptvpro",
+          "name" : "APTV"
+        },
+        {
+          "bundleId" : "com.colliderli.iina",
+          "name" : "IINA"
+        },
+        {
+          "bundleId" : "com.netease.163music",
+          "name" : "NeteaseMusic"
+        },
+        {
+          "bundleId" : "com.zisa.Open-the-F--king-TV-Right-Now",
+          "name" : "Open the F**king TV Right Now"
+        },
+        {
+          "bundleId" : "org.videolan.vlc",
+          "name" : "VLC"
+        },
+        {
+          "bundleId" : "com.lemon.lvpro",
+          "name" : "VideoFusion-macOS"
+        },
+        {
+          "bundleId" : "MewCut",
+          "name" : "Mew Cut"
+        },
+        {
+          "bundleId" : "app.podcast.cosmos",
+          "name" : "Podcast"
+        },
+        {
+          "bundleId" : "com.apple.QuickTimePlayerX",
+          "name" : "QuickTime Player"
+        }
+      ],
+      "name" : "🏖️ av"
+    },
+    {
+      "id" : "D83C46CF-4372-46EA-82D1-A1C6D9576826",
+      "apps" : [
+        {
+          "bundleId" : "com.openai.chat",
+          "name" : "ChatGPT"
+        },
+        {
+          "bundleId" : "xyz.chatboxapp.app",
+          "name" : "Chatbox"
+        },
+        {
+          "bundleId" : "com.bot.pc.doubao",
+          "name" : "Doubao"
+        },
+        {
+          "bundleId" : "com.liuliu.draw-things",
+          "name" : "Draw Things"
+        },
+        {
+          "bundleId" : "org.videolan.vlc",
+          "name" : "VLC"
+        },
+        {
+          "bundleId" : "com.kangfenmao.CherryStudio",
+          "name" : "Cherry Studio"
+        },
+        {
+          "bundleId" : "com.todesktop.241012ess7yxs0e",
+          "name" : "ComfyUI"
+        },
+        {
+          "bundleId" : "com.quora.poe.electron",
+          "name" : "Poe"
+        },
+        {
+          "bundleId" : "com.trae.app",
+          "name" : "Trae"
+        }
+      ],
+      "name" : "✨ ai"
+    },
+    {
+      "id" : "0991C2EA-486D-4272-A6BB-DA162DA1A2DC",
+      "apps" : [
+        {
+          "bundleId" : "com.microsoft.Excel",
+          "name" : "Excel"
+        },
+        {
+          "bundleId" : "com.kingsoft.wpsoffice.mac",
+          "name" : "wpsoffice"
+        },
+        {
+          "bundleId" : "com.readdle.PDFExpert-Mac",
+          "name" : "PDF Expert"
+        }
+      ],
+      "name" : "📊 office"
+    },
+    {
+      "id" : "83AEB0A3-42A5-4DCF-9D5C-DAC9AE330C2F",
+      "apps" : [
+        {
+          "name" : "Dropbox",
+          "bundleId" : "com.getdropbox.dropbox"
+        },
+        {
+          "name" : "BaiduNetdisk_mac",
+          "bundleId" : "com.baidu.BaiduNetdisk-mac"
+        },
+        {
+          "name" : "Quark",
+          "bundleId" : "com.quark.desktop"
+        }
+      ],
+      "name" : "网盘"
+    }
+  ],
+  "websiteGroups" : [
+    {
+      "id" : "2D1A99B0-2257-456E-8836-B459C2F06253",
+      "websiteIds" : [
+
+      ],
+      "name" : "默认"
+    },
+    {
+      "id" : "70FFF58F-2688-41EB-86C8-990F85A21F76",
+      "websiteIds" : [
+
+      ],
+      "name" : "🐒 coding"
+    },
+    {
+      "id" : "64A83D6A-C668-4AF5-9232-C7EA74245FE6",
+      "websiteIds" : [
+
+      ],
+      "name" : "🔧 ai"
+    },
+    {
+      "id" : "6BE90960-744E-437A-9CB0-908890173FDB",
+      "websiteIds" : [
+
+      ],
+      "name" : "📰 news"
+    },
+    {
+      "id" : "BD0ACB8C-D7C0-4210-8436-AEEEBA311334",
+      "websiteIds" : [
+
+      ],
+      "name" : "💫 SNS"
+    },
+    {
+      "id" : "C3784E2A-4F99-400B-B0D0-8B03DC5DF84B",
+      "websiteIds" : [
+
+      ],
+      "name" : "🏖️ av"
+    }
+  ],
+  "appShortcuts" : [
+    {
+      "id" : "9A874F3C-5F43-4F20-87A7-1789E7EBB4A9",
+      "bundleIdentifier" : "com.openai.chat",
+      "appName" : "ChatGPT",
+      "key" : "2"
+    },
+    {
+      "id" : "D2AD64E6-E985-43F0-96CC-52CBE65C1093",
+      "bundleIdentifier" : "com.todesktop.230313mzl4w4u92",
+      "appName" : "Cursor",
+      "key" : "3"
+    },
+    {
+      "id" : "52FEDCB3-2B0E-46A9-9E46-867D2C6D0AC6",
+      "bundleIdentifier" : "com.1password.1password",
+      "appName" : "1Password.app",
+      "key" : "1"
+    },
+    {
+      "id" : "1825AF20-F074-4008-B24F-DB2F399E201D",
+      "bundleIdentifier" : "company.thebrowser.Browser",
+      "appName" : "Arc",
+      "key" : "A"
+    },
+    {
+      "id" : "781EFBD9-93E2-4AA1-99C9-EB280C486E9D",
+      "bundleIdentifier" : "com.apple.Safari",
+      "appName" : "Safari浏览器",
+      "key" : "S"
+    },
+    {
+      "id" : "90D88E30-5E62-482E-9B46-230AEA493203",
+      "bundleIdentifier" : "com.apple.dt.Xcode",
+      "appName" : "Xcode",
+      "key" : "X"
+    },
+    {
+      "id" : "C33CA68B-734D-48C5-A4D2-8528E3009001",
+      "bundleIdentifier" : "com.tencent.qq",
+      "appName" : "QQ",
+      "key" : "Q"
+    },
+    {
+      "id" : "E17DAB79-97E4-41C0-A9BD-070A02CF591C",
+      "bundleIdentifier" : "ru.keepcoder.Telegram",
+      "appName" : "Telegram",
+      "key" : "T"
+    },
+    {
+      "id" : "4D8F69DF-8648-4542-B5F1-52C79C2982DA",
+      "bundleIdentifier" : "com.electron.lark",
+      "appName" : "飞书",
+      "key" : "L"
+    },
+    {
+      "id" : "9D396CD3-2119-4041-A847-C4E36A49C7B1",
+      "bundleIdentifier" : "com.apple.finder",
+      "appName" : "访达",
+      "key" : "F"
+    },
+    {
+      "id" : "2BF61DC7-7471-45A6-A8A8-EBB6B541CE2B",
+      "bundleIdentifier" : "com.github.GitHubClient",
+      "appName" : "GitHub Desktop",
+      "key" : "G"
+    },
+    {
+      "id" : "2162A755-2F37-44AC-A869-09E2E6DC21BC",
+      "bundleIdentifier" : "com.apple.Home",
+      "appName" : "家庭",
+      "key" : "H"
+    },
+    {
+      "id" : "68A2FA56-5FA6-418B-8894-A91E048B678C",
+      "bundleIdentifier" : "com.google.Chrome",
+      "appName" : "Google Chrome",
+      "key" : "C"
+    },
+    {
+      "id" : "EB51B105-5F29-4A76-95C8-49015A56AE17",
+      "bundleIdentifier" : "notion.id",
+      "appName" : "Notion",
+      "key" : "N"
+    },
+    {
+      "id" : "8AF2210C-73C3-402C-A1B3-2E270DB184B4",
+      "bundleIdentifier" : "com.apple.Photos",
+      "appName" : "照片",
+      "key" : "E"
+    },
+    {
+      "id" : "00216B79-2811-45AC-98DC-CE262290390A",
+      "bundleIdentifier" : "com.apple.Photos",
+      "appName" : "照片",
+      "key" : "Z"
+    },
+    {
+      "id" : "3027E58E-8A85-4493-9C5F-AE9FBA4441B9",
+      "bundleIdentifier" : "com.tencent.xinWeChat",
+      "appName" : "微信",
+      "key" : "W"
+    },
+    {
+      "id" : "FD4A8A6F-AB64-4D55-A03F-4706EC2BCCB7",
+      "bundleIdentifier" : "com.bot.pc.doubao",
+      "appName" : "豆包.app",
+      "key" : "D"
+    },
+    {
+      "id" : "FB51265A-61C9-4DF1-A239-8D16BF5E4FBB",
+      "bundleIdentifier" : "com.quora.poe.electron",
+      "appName" : "Poe.app",
+      "key" : "P"
+    }
+  ],
+  "timestamp" : "2025-05-13T13:08:59Z",
+  "version" : "0.1.0",
+  "websites" : [
+    {
+      "id" : "6741FE35-8DD1-4747-885B-6B4E7067814B",
+      "groupIds" : [
+        "C3784E2A-4F99-400B-B0D0-8B03DC5DF84B"
+      ],
+      "name" : "Bilibili",
+      "shortcutKey" : "B",
+      "url" : "http:\/\/bilibili.com\/",
+      "isEnabled" : true
+    },
+    {
+      "id" : "2E278B0B-3742-4BD0-A4A7-979DA2B0812B",
+      "groupIds" : [
+        "64A83D6A-C668-4AF5-9232-C7EA74245FE6"
+      ],
+      "name" : "ChatGPT",
+      "shortcutKey" : "C",
+      "url" : "https:\/\/chatgpt.com\/",
+      "isEnabled" : true
+    },
+    {
+      "id" : "91A41493-399C-43B6-B2B9-16DBF96D5226",
+      "groupIds" : [
+        "64A83D6A-C668-4AF5-9232-C7EA74245FE6"
+      ],
+      "name" : "Gemini",
+      "url" : "https:\/\/aistudio.google.com\/prompts\/1aYhIjjv4zme5WB4L0If7M44NUCs1hq5w",
+      "isEnabled" : true
+    },
+    {
+      "id" : "7EFA5784-D582-4A8E-AF4B-6B09436BBD30",
+      "groupIds" : [
+        "6BE90960-744E-437A-9CB0-908890173FDB"
+      ],
+      "name" : "IT之家",
+      "shortcutKey" : "I",
+      "url" : "https:\/\/www.ithome.com\/",
+      "isEnabled" : true
+    },
+    {
+      "id" : "A2CDFDD1-F284-403E-9DDB-1DCEBF9F5CCB",
+      "groupIds" : [
+        "BD0ACB8C-D7C0-4210-8436-AEEEBA311334"
+      ],
+      "name" : "X",
+      "shortcutKey" : "T",
+      "url" : "https:\/\/twitter.com\/home",
+      "isEnabled" : true
+    },
+    {
+      "id" : "1DA85B3A-8041-4EED-AC7F-CD75B7B45657",
+      "groupIds" : [
+        "C3784E2A-4F99-400B-B0D0-8B03DC5DF84B"
+      ],
+      "name" : "Youtube",
+      "shortcutKey" : "Y",
+      "url" : "https:\/\/www.youtube.com\/feed\/you",
+      "isEnabled" : true
+    },
+    {
+      "id" : "3C46AE08-C147-4154-BABA-B9ECAEDAD1CB",
+      "groupIds" : [
+        "70FFF58F-2688-41EB-86C8-990F85A21F76"
+      ],
+      "name" : "github.com",
+      "shortcutKey" : "G",
+      "url" : "https:\/\/github.com\/lessismoretest?tab=repositories",
+      "isEnabled" : true
+    },
+    {
+      "id" : "CFFD6E84-5051-486A-B57A-9AA66B18B669",
+      "groupIds" : [
+        "BD0ACB8C-D7C0-4210-8436-AEEEBA311334"
+      ],
+      "name" : "小红书",
+      "shortcutKey" : "X",
+      "url" : "https:\/\/www.xiaohongshu.com\/explore",
+      "isEnabled" : true
+    },
+    {
+      "id" : "DC96D655-8D74-474A-A653-EB1EE5AA1EB0",
+      "groupIds" : [
+        "6BE90960-744E-437A-9CB0-908890173FDB"
+      ],
+      "name" : "晚点Latepost",
+      "url" : "https:\/\/www.latepost.com\/",
+      "isEnabled" : true
+    },
+    {
+      "id" : "0D6E22C1-908D-4471-B133-A086EBF91F76",
+      "groupIds" : [
+        "BD0ACB8C-D7C0-4210-8436-AEEEBA311334"
+      ],
+      "name" : "知乎",
+      "shortcutKey" : "Z",
+      "url" : "https:\/\/www.zhihu.com\/hot",
+      "isEnabled" : true
+    },
+    {
+      "id" : "E0D56113-24AC-4FF5-9CB8-471DB58337EE",
+      "groupIds" : [
+        "2D1A99B0-2257-456E-8836-B459C2F06253",
+        "6BE90960-744E-437A-9CB0-908890173FDB"
+      ],
+      "name" : "语鲸",
+      "shortcutKey" : "1",
+      "url" : "https:\/\/lingowhale.com\/channels?channel_id=lingo_summary",
+      "isEnabled" : true
+    },
+    {
+      "id" : "CF5AB3E4-06A3-4CDE-9E03-8EF738E520E8",
+      "groupIds" : [
+        "BD0ACB8C-D7C0-4210-8436-AEEEBA311334"
+      ],
+      "name" : "豆瓣",
+      "url" : "https:\/\/book.douban.com\/",
+      "isEnabled" : true
+    }
+  ]
+}

@@ -31,9 +31,20 @@ struct SettingsView: View {
             }
             
             Section {
+                AppIconSelector()
+            } header: {
+                Text("应用图标")
+            }
+            
+            Section {
                 Toggle("开机自动启动", isOn: $settings.launchAtLogin)
                     .onChange(of: settings.launchAtLogin) { _ in
                         settings.toggleLaunchAtLogin()
+                    }
+                
+                Toggle("单击Option键切换上一个应用", isOn: $settings.switchToLastAppWithOptionClick)
+                    .onChange(of: settings.switchToLastAppWithOptionClick) { _ in
+                        settings.saveSettings()
                     }
                 
                 HStack {
@@ -60,7 +71,10 @@ struct SettingsView: View {
                     Button(action: {
                         showingImportSheet = true
                     }) {
-                        Image(systemName: "square.and.arrow.down")
+                        HStack {
+                            Image(systemName: "square.and.arrow.down")
+                            Text("导入")
+                        }
                     }
                     .buttonStyle(.borderless)
                     .help("导入快捷键设置")
@@ -68,17 +82,21 @@ struct SettingsView: View {
                     Button(action: {
                         showingExportSheet = true
                     }) {
-                        Image(systemName: "square.and.arrow.up")
+                        HStack {
+                            Image(systemName: "square.and.arrow.up")
+                            Text("导出")
+                        }
                     }
                     .buttonStyle(.borderless)
                     .help("导出快捷键设置")
                 }
+            } header: {
+                Text("导入导出")
             }
             
             Section {
                 LabeledContent("版本", value: Bundle.main.appVersion)
                 LabeledContent("开发者", value: "Less is more")
-                LabeledContent("使用次数", value: "\(settings.totalUsageCount)")
                 
                 Link(destination: URL(string: "https://github.com/lessismoretest/OpenManico")!) {
                     HStack {

@@ -10,6 +10,15 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             List {
+                // 顶部应用名标题
+                Text("OpenManico")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 4)
+                
                 NavigationLink(destination: ShortcutsView()
                     .navigationTitle("App快捷键")) {
                     Label("App快捷键", systemImage: "keyboard")
@@ -38,6 +47,16 @@ struct ContentView: View {
                     Label("悬浮窗", systemImage: "rectangle.on.rectangle")
                 }
                 
+                NavigationLink(destination: CircleRingSettingsView()
+                    .navigationTitle("圆环模式")) {
+                    Label("圆环模式", systemImage: "circle.dashed")
+                }
+                
+                NavigationLink(destination: UsageStatsView()
+                    .navigationTitle("数据统计")) {
+                    Label("数据统计", systemImage: "chart.bar")
+                }
+                
                 NavigationLink(destination: SettingsView()
                     .navigationTitle("通用设置")) {
                     Label("通用设置", systemImage: "gear")
@@ -46,7 +65,10 @@ struct ContentView: View {
             .listStyle(SidebarListStyle())
             .frame(minWidth: 200)
             .toolbar {
-                ToolbarItem(placement: .navigation) {
+                ToolbarItem(placement: .automatic) {
+                    Spacer()
+                }
+                ToolbarItem(placement: .automatic) {
                     Button(action: toggleSidebar) {
                         Image(systemName: "sidebar.left")
                             .foregroundColor(.secondary)

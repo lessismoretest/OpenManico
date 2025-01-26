@@ -57,7 +57,6 @@ struct AppListView: View {
                             ForEach(groupManager.groups) { group in
                                 Button(action: { selectedGroup = group }) {
                                     HStack {
-                                        Image(systemName: "folder")
                                         Text("\(group.name) (\(group.apps.count))")
                                     }
                                     .foregroundColor(selectedGroup?.id == group.id ? .white : .primary)
@@ -203,19 +202,76 @@ struct AppListView: View {
     
     private func scanInstalledApps() {
         DispatchQueue.global(qos: .userInitiated).async {
-            // 扫描应用程序文件夹
+            // 1. 使用当前的扫描方法（扫描目录）
             let systemApps = getAppsInDirectory(at: URL(fileURLWithPath: "/Applications"))
+            let systemAppsDir = getAppsInDirectory(at: URL(fileURLWithPath: "/System/Applications"))
+            let systemUtilitiesDir = getAppsInDirectory(at: URL(fileURLWithPath: "/System/Applications/Utilities"))
             let userApps = getAppsInDirectory(at: URL(fileURLWithPath: NSString(string: "~/Applications").expandingTildeInPath))
             
-            // 转换为 AppInfo 对象
-            let apps = (systemApps + userApps).compactMap { url -> AppInfo? in
-                guard let bundle = Bundle(url: url),
-                      let bundleId = bundle.bundleIdentifier,
-                      let name = bundle.infoDictionary?["CFBundleName"] as? String ?? url.deletingPathExtension().lastPathComponent as String? else {
-                    return nil
+            // 2. 转换为AppInfo对象
+            var apps = (systemApps + systemAppsDir + systemUtilitiesDir + userApps).compactMap { url -> AppInfo? in
+                // 尝试通过Bundle获取信息
+                if let bundle = Bundle(url: url),
+                   let bundleId = bundle.bundleIdentifier,
+                   let name = bundle.infoDictionary?["CFBundleName"] as? String ?? 
+                              bundle.infoDictionary?["CFBundleDisplayName"] as? String ??
+                              url.deletingPathExtension().lastPathComponent as String? {
+                    let icon = NSWorkspace.shared.icon(forFile: url.path)
+                    return AppInfo(bundleId: bundleId, name: name, icon: icon, url: url)
                 }
-                let icon = NSWorkspace.shared.icon(forFile: url.path)
-                return AppInfo(bundleId: bundleId, name: name, icon: icon, url: url)
+                return nil
+            }
+            
+            // 3. 使用NSWorkspace API获取可运行应用（如果系统支持）
+            if #available(macOS 12.0, *) {
+                // 在Monterey及以上版本使用新API
+                let workspace = NSWorkspace.shared
+                let fileURL = URL(fileURLWithPath: NSHomeDirectory())  // 使用任何文件作为参考
+                if let appURLs = workspace.urlsForApplications(toOpen: fileURL) as? [URL] {
+                    for appURL in appURLs {
+                        // 避免重复添加
+                        if let bundle = Bundle(url: appURL),
+                           let bundleID = bundle.bundleIdentifier,
+                           !bundleID.isEmpty && !apps.contains(where: { $0.bundleId == bundleID }),
+                           let name = bundle.infoDictionary?["CFBundleName"] as? String ?? 
+                                     bundle.infoDictionary?["CFBundleDisplayName"] as? String ??
+                                     appURL.deletingPathExtension().lastPathComponent as String? {
+                            let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+                            apps.append(AppInfo(bundleId: bundleID, name: name, icon: icon, url: appURL))
+                        }
+                    }
+                }
+            }
+            
+            // 4. 添加常用系统应用
+            let commonSystemApps = [
+                ("com.apple.finder", "访达", "Finder"),
+                ("com.apple.systempreferences", "系统设置", "System Settings"),
+                ("com.apple.Safari", "Safari", "Safari"),
+                ("com.apple.mail", "邮件", "Mail"),
+                ("com.apple.iCal", "日历", "Calendar"),
+                ("com.apple.Photos", "照片", "Photos"),
+                ("com.apple.iWork.Pages", "Pages", "Pages"),
+                ("com.apple.iWork.Numbers", "Numbers", "Numbers"),
+                ("com.apple.iWork.Keynote", "Keynote", "Keynote"),
+                ("com.apple.Notes", "备忘录", "Notes"),
+                ("com.apple.iMovie", "iMovie", "iMovie"),
+                ("com.apple.Music", "音乐", "Music"),
+                ("com.apple.Maps", "地图", "Maps"),
+                ("com.apple.AppStore", "App Store", "App Store"),
+                ("com.apple.TextEdit", "文本编辑", "TextEdit"),
+                ("com.apple.Terminal", "终端", "Terminal")
+            ]
+            
+            for (bundleId, localizedName, englishName) in commonSystemApps {
+                // 检查是否已经添加
+                if !apps.contains(where: { $0.bundleId == bundleId }) {
+                    // 尝试获取应用URL
+                    if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
+                        let icon = NSWorkspace.shared.icon(forFile: url.path)
+                        apps.append(AppInfo(bundleId: bundleId, name: localizedName, icon: icon, url: url))
+                    }
+                }
             }
             
             DispatchQueue.main.async {
