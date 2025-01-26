@@ -135,8 +135,87 @@ enum FloatingWindowTheme: String {
     case dark = "dark"
 }
 
+// 添加圆环主题枚举
+enum CircleRingTheme: String, Codable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+    
+    var description: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .light: return "浅色模式"
+        case .dark: return "深色模式"
+        }
+    }
+}
+
+enum SectorHoverSoundType: String, Codable {
+    case ping = "ping"
+    case tink = "tink"
+    case submarine = "submarine"
+    case bottle = "bottle"
+    case frog = "frog"
+    case pop = "pop"
+    case basso = "basso"
+    case funk = "funk"
+    case glass = "glass"
+    case morse = "morse"
+    case purr = "purr"
+    case sosumi = "sosumi"
+    // 轻快类音效
+    case click = "click"
+    
+    var description: String {
+        switch self {
+        case .ping: return "Ping"
+        case .tink: return "Tink"
+        case .submarine: return "潜水艇"
+        case .bottle: return "瓶子"
+        case .frog: return "青蛙"
+        case .pop: return "流行"
+        case .basso: return "低音"
+        case .funk: return "放克"
+        case .glass: return "玻璃"
+        case .morse: return "摩尔斯"
+        case .purr: return "猫咪"
+        case .sosumi: return "Sosumi"
+        case .click: return "点击"
+        }
+    }
+}
+
+// 添加图标显示动效类型枚举
+enum IconAppearAnimationType: String, Codable {
+    case none = "none"
+    case clockwise = "clockwise"
+    case counterClockwise = "counterClockwise"
+    
+    var description: String {
+        switch self {
+        case .none: return "无动效"
+        case .clockwise: return "顺时针"
+        case .counterClockwise: return "逆时针"
+        }
+    }
+}
+
 class AppSettings: ObservableObject {
     static let shared = AppSettings()
+    
+    // 圆环展开动效设置
+    @Published var useCircleRingAnimation: Bool = true {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    // 圆环长按触发时间
+    @Published var circleRingLongPressThreshold: CGFloat = 0.3 {
+        didSet {
+            saveSettings()
+        }
+    }
     
     private var isInitializing = true
     private var isUpdatingScene = false
@@ -472,6 +551,174 @@ class AppSettings: ObservableObject {
         }
     }
     
+    @Published var switchToLastAppWithOptionClick: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    // ==== 圆环模式设置 ====
+    @Published var enableCircleRingMode: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var circleRingDiameter: CGFloat = 300 {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var circleRingIconSize: CGFloat = 40 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var circleRingIconCornerRadius: CGFloat = 8 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var circleRingSectorCount: Int = 6 {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var circleRingApps: [String] = [] {
+        didSet {
+            print("[AppSettings] 圆环应用更新: \(oldValue.count) -> \(circleRingApps.count)")
+            saveSettings()
+        }
+    }
+    
+    @Published var circleRingTheme: CircleRingTheme = .system {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var circleRingInnerDiameter: CGFloat = 260 {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var useSectorHighlight: Bool = true {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var sectorHighlightOpacity: CGFloat = 0.15 {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var useSectorHoverSound: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var useBlurEffectForCircleRing: Bool = true {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var circleRingOpacity: CGFloat = 0.8 {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var sectorHoverSoundType: SectorHoverSoundType = .ping {
+        didSet {
+            saveSettings()
+        }
+    }
+    
+    @Published var centerIndicatorSize: CGFloat = 8 {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var showInnerCircle: Bool = true {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var innerCircleOpacity: CGFloat = 0.4 {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var showInnerCircleFill: Bool = false {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var innerCircleFillOpacity: CGFloat = 0.1 {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var showCenterIndicator: Bool = true {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var useIconAppearAnimation: Bool = false {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var iconAppearAnimationType: IconAppearAnimationType = .none {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    @Published var iconAppearSpeed: CGFloat = 0.06 {
+        didSet {
+            saveSettings()
+            CircleRingController.shared.reloadCircleRing()
+        }
+    }
+    
+    // 悬浮窗置顶设置
+    @Published var isPinned: Bool = false {
+        didSet {
+            saveSettings()
+        }
+    }
+    
     private let shortcutsKey = "AppShortcuts"
     private let themeKey = "AppTheme"
     private let launchAtLoginKey = "LaunchAtLogin"
@@ -529,6 +776,31 @@ class AppSettings: ObservableObject {
     private let showDividerKey = "ShowDivider"
     private let dividerOpacityKey = "DividerOpacity"
     private let floatingWindowThemeKey = "FloatingWindowTheme"
+    private let switchToLastAppWithOptionClickKey = "SwitchToLastAppWithOptionClick"
+    private let enableCircleRingModeKey = "EnableCircleRingMode"
+    private let circleRingDiameterKey = "CircleRingDiameter"
+    private let circleRingIconSizeKey = "CircleRingIconSize"
+    private let circleRingIconCornerRadiusKey = "CircleRingIconCornerRadius"
+    private let circleRingSectorCountKey = "CircleRingSectorCount"
+    private let circleRingAppsKey = "CircleRingApps"
+    private let circleRingThemeKey = "CircleRingTheme"
+    private let circleRingInnerDiameterKey = "CircleRingInnerDiameter"
+    private let useSectorHighlightKey = "UseSectorHighlight"
+    private let sectorHighlightOpacityKey = "SectorHighlightOpacity"
+    private let useSectorHoverSoundKey = "UseSectorHoverSound"
+    private let useBlurEffectForCircleRingKey = "useBlurEffectForCircleRing"
+    private let sectorHoverSoundTypeKey = "SectorHoverSoundType"
+    private let centerIndicatorSizeKey = "CenterIndicatorSize"
+    private let showInnerCircleKey = "ShowInnerCircle"
+    private let innerCircleOpacityKey = "InnerCircleOpacity"
+    private let showInnerCircleFillKey = "ShowInnerCircleFill"
+    private let innerCircleFillOpacityKey = "InnerCircleFillOpacity"
+    private let showCenterIndicatorKey = "ShowCenterIndicator"
+    private let useCircleRingAnimationKey = "useCircleRingAnimation"
+    private let circleRingLongPressThresholdKey = "circleRingLongPressThreshold"
+    private let iconAppearAnimationTypeKey = "iconAppearAnimationType"
+    private let iconAppearSpeedKey = "iconAppearSpeed"
+    private let circleRingOpacityKey = "circleRingOpacity"
     
     private init() {
         isInitializing = true
@@ -575,6 +847,92 @@ class AppSettings: ObservableObject {
         if let themeString = UserDefaults.standard.string(forKey: floatingWindowThemeKey),
            let theme = FloatingWindowTheme(rawValue: themeString) {
             floatingWindowTheme = theme
+        }
+        
+        // 加载圆环主题设置
+        if let themeString = UserDefaults.standard.string(forKey: circleRingThemeKey),
+           let theme = CircleRingTheme(rawValue: themeString) {
+            circleRingTheme = theme
+        }
+        
+        // 加载圆环毛玻璃效果设置
+        useBlurEffectForCircleRing = UserDefaults.standard.bool(forKey: useBlurEffectForCircleRingKey)
+        
+        // 加载圆环透明度设置
+        circleRingOpacity = UserDefaults.standard.double(forKey: circleRingOpacityKey)
+        if !UserDefaults.standard.contains(key: circleRingOpacityKey) {
+            circleRingOpacity = 0.8
+            UserDefaults.standard.set(0.8, forKey: circleRingOpacityKey)
+        }
+        
+        // 加载圆心大小设置
+        centerIndicatorSize = UserDefaults.standard.double(forKey: centerIndicatorSizeKey)
+        if !UserDefaults.standard.contains(key: centerIndicatorSizeKey) {
+            centerIndicatorSize = 8
+            UserDefaults.standard.set(8, forKey: centerIndicatorSizeKey)
+        }
+        
+        // 加载内圈可见性设置
+        showInnerCircle = UserDefaults.standard.bool(forKey: showInnerCircleKey)
+        if !UserDefaults.standard.contains(key: showInnerCircleKey) {
+            showInnerCircle = true
+            UserDefaults.standard.set(true, forKey: showInnerCircleKey)
+        }
+        
+        // 加载内圈透明度设置
+        innerCircleOpacity = UserDefaults.standard.double(forKey: innerCircleOpacityKey)
+        if !UserDefaults.standard.contains(key: innerCircleOpacityKey) {
+            innerCircleOpacity = 0.4
+            UserDefaults.standard.set(0.4, forKey: innerCircleOpacityKey)
+        }
+        
+        // 加载内圆填充显示设置
+        showInnerCircleFill = UserDefaults.standard.bool(forKey: showInnerCircleFillKey)
+        if !UserDefaults.standard.contains(key: showInnerCircleFillKey) {
+            showInnerCircleFill = false
+            UserDefaults.standard.set(false, forKey: showInnerCircleFillKey)
+        }
+        
+        // 加载内圆填充透明度设置
+        innerCircleFillOpacity = UserDefaults.standard.double(forKey: innerCircleFillOpacityKey)
+        if !UserDefaults.standard.contains(key: innerCircleFillOpacityKey) {
+            innerCircleFillOpacity = 0.1
+            UserDefaults.standard.set(0.1, forKey: innerCircleFillOpacityKey)
+        }
+        
+        // 加载内圈设置
+        showCenterIndicator = UserDefaults.standard.bool(forKey: showCenterIndicatorKey)
+        
+        if !UserDefaults.standard.contains(key: showCenterIndicatorKey) {
+            showCenterIndicator = true
+            UserDefaults.standard.set(true, forKey: showCenterIndicatorKey)
+        }
+        
+        // 加载圆环动画设置
+        useCircleRingAnimation = UserDefaults.standard.bool(forKey: useCircleRingAnimationKey)
+        if !UserDefaults.standard.contains(key: useCircleRingAnimationKey) {
+            useCircleRingAnimation = true
+            UserDefaults.standard.set(true, forKey: useCircleRingAnimationKey)
+        }
+        
+        // 加载圆环长按阈值设置
+        circleRingLongPressThreshold = UserDefaults.standard.double(forKey: circleRingLongPressThresholdKey)
+        if !UserDefaults.standard.contains(key: circleRingLongPressThresholdKey) {
+            circleRingLongPressThreshold = 0.3
+            UserDefaults.standard.set(0.3, forKey: circleRingLongPressThresholdKey)
+        }
+        
+        // 加载图标显示动效类型
+        if let animTypeString = UserDefaults.standard.string(forKey: iconAppearAnimationTypeKey),
+           let animType = IconAppearAnimationType(rawValue: animTypeString) {
+            iconAppearAnimationType = animType
+        } else {
+            // 兼容旧版本：如果之前使用了布尔设置，转换为新的枚举类型
+            if UserDefaults.standard.bool(forKey: "useIconAppearAnimation") {
+                iconAppearAnimationType = .clockwise
+            } else {
+                iconAppearAnimationType = .none
+            }
         }
         
         isInitializing = false
@@ -636,6 +994,7 @@ class AppSettings: ObservableObject {
         totalUsageCount = UserDefaults.standard.integer(forKey: usageCountKey)
         showFloatingWindow = UserDefaults.standard.bool(forKey: showFloatingWindowKey)
         showAllAppsInFloatingWindow = UserDefaults.standard.bool(forKey: showAllAppsInFloatingWindowKey)
+        switchToLastAppWithOptionClick = UserDefaults.standard.bool(forKey: switchToLastAppWithOptionClickKey)
         
         // 加载数值设置，如果没有则使用默认值
         iconSize = UserDefaults.standard.double(forKey: iconSizeKey)
@@ -801,6 +1160,68 @@ class AppSettings: ObservableObject {
             UserDefaults.standard.set(16, forKey: floatingWindowCornerRadiusKey)
         }
         
+        // 加载圆环模式设置
+        enableCircleRingMode = UserDefaults.standard.bool(forKey: enableCircleRingModeKey)
+        
+        circleRingDiameter = UserDefaults.standard.double(forKey: circleRingDiameterKey)
+        if !UserDefaults.standard.contains(key: circleRingDiameterKey) {
+            circleRingDiameter = 300
+            UserDefaults.standard.set(300, forKey: circleRingDiameterKey)
+        }
+        
+        circleRingIconSize = UserDefaults.standard.double(forKey: circleRingIconSizeKey)
+        if !UserDefaults.standard.contains(key: circleRingIconSizeKey) {
+            circleRingIconSize = 40
+            UserDefaults.standard.set(40, forKey: circleRingIconSizeKey)
+        }
+        
+        circleRingIconCornerRadius = UserDefaults.standard.double(forKey: circleRingIconCornerRadiusKey)
+        if !UserDefaults.standard.contains(key: circleRingIconCornerRadiusKey) {
+            circleRingIconCornerRadius = 8
+            UserDefaults.standard.set(8, forKey: circleRingIconCornerRadiusKey)
+        }
+        
+        circleRingSectorCount = UserDefaults.standard.integer(forKey: circleRingSectorCountKey)
+        if !UserDefaults.standard.contains(key: circleRingSectorCountKey) {
+            circleRingSectorCount = 6
+            UserDefaults.standard.set(6, forKey: circleRingSectorCountKey)
+        }
+        
+        circleRingInnerDiameter = UserDefaults.standard.double(forKey: circleRingInnerDiameterKey)
+        if !UserDefaults.standard.contains(key: circleRingInnerDiameterKey) {
+            circleRingInnerDiameter = 260
+            UserDefaults.standard.set(260, forKey: circleRingInnerDiameterKey)
+        }
+        
+        useSectorHighlight = UserDefaults.standard.bool(forKey: useSectorHighlightKey)
+        if !UserDefaults.standard.contains(key: useSectorHighlightKey) {
+            useSectorHighlight = true
+            UserDefaults.standard.set(true, forKey: useSectorHighlightKey)
+        }
+        
+        sectorHighlightOpacity = UserDefaults.standard.double(forKey: sectorHighlightOpacityKey)
+        if !UserDefaults.standard.contains(key: sectorHighlightOpacityKey) {
+            sectorHighlightOpacity = 0.15
+            UserDefaults.standard.set(0.15, forKey: sectorHighlightOpacityKey)
+        }
+        
+        useSectorHoverSound = UserDefaults.standard.bool(forKey: useSectorHoverSoundKey)
+        
+        if let soundTypeString = UserDefaults.standard.string(forKey: sectorHoverSoundTypeKey),
+           let soundType = SectorHoverSoundType(rawValue: soundTypeString) {
+            sectorHoverSoundType = soundType
+        } else {
+            sectorHoverSoundType = .ping
+        }
+        
+        if let appsData = UserDefaults.standard.array(forKey: circleRingAppsKey) as? [String] {
+            circleRingApps = appsData
+            print("[AppSettings] 加载了 \(circleRingApps.count) 个圆环应用")
+        } else {
+            print("[AppSettings] 未找到已保存的圆环应用")
+            circleRingApps = []
+        }
+        
         // 确保所有默认值都被保存
         UserDefaults.standard.synchronize()
     }
@@ -833,6 +1254,7 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(showWindowOnHover, forKey: showWindowOnHoverKey)
         UserDefaults.standard.set(openWebOnHover, forKey: openWebOnHoverKey)
         UserDefaults.standard.set(showAllAppsInFloatingWindow, forKey: showAllAppsInFloatingWindowKey)
+        UserDefaults.standard.set(switchToLastAppWithOptionClick, forKey: switchToLastAppWithOptionClickKey)
         UserDefaults.standard.set(appDisplayMode.rawValue, forKey: appDisplayModeKey)
         UserDefaults.standard.set(websiteDisplayMode.rawValue, forKey: websiteDisplayModeKey)
         UserDefaults.standard.set(iconSize, forKey: iconSizeKey)
@@ -904,14 +1326,49 @@ class AppSettings: ObservableObject {
         // 保存悬浮窗主题设置
         UserDefaults.standard.set(floatingWindowTheme.rawValue, forKey: floatingWindowThemeKey)
         
+        // 保存圆环模式设置
+        UserDefaults.standard.set(enableCircleRingMode, forKey: enableCircleRingModeKey)
+        UserDefaults.standard.set(circleRingDiameter, forKey: circleRingDiameterKey)
+        UserDefaults.standard.set(circleRingIconSize, forKey: circleRingIconSizeKey)
+        UserDefaults.standard.set(circleRingIconCornerRadius, forKey: circleRingIconCornerRadiusKey)
+        UserDefaults.standard.set(circleRingSectorCount, forKey: circleRingSectorCountKey)
+        UserDefaults.standard.set(circleRingApps, forKey: circleRingAppsKey)
+        print("[AppSettings] 保存 \(circleRingApps.count) 个圆环应用: \(circleRingApps)")
+        UserDefaults.standard.set(circleRingTheme.rawValue, forKey: circleRingThemeKey)
+        UserDefaults.standard.set(circleRingInnerDiameter, forKey: circleRingInnerDiameterKey)
+        UserDefaults.standard.set(useSectorHighlight, forKey: useSectorHighlightKey)
+        UserDefaults.standard.set(sectorHighlightOpacity, forKey: sectorHighlightOpacityKey)
+        UserDefaults.standard.set(useSectorHoverSound, forKey: useSectorHoverSoundKey)
+        UserDefaults.standard.set(useBlurEffectForCircleRing, forKey: useBlurEffectForCircleRingKey)
+        UserDefaults.standard.set(sectorHoverSoundType.rawValue, forKey: sectorHoverSoundTypeKey)
+        UserDefaults.standard.set(centerIndicatorSize, forKey: centerIndicatorSizeKey)
+        UserDefaults.standard.set(showInnerCircle, forKey: showInnerCircleKey)
+        UserDefaults.standard.set(innerCircleOpacity, forKey: innerCircleOpacityKey)
+        UserDefaults.standard.set(showInnerCircleFill, forKey: showInnerCircleFillKey)
+        UserDefaults.standard.set(innerCircleFillOpacity, forKey: innerCircleFillOpacityKey)
+        UserDefaults.standard.set(showCenterIndicator, forKey: showCenterIndicatorKey)
+        UserDefaults.standard.set(useCircleRingAnimation, forKey: useCircleRingAnimationKey)
+        UserDefaults.standard.set(circleRingLongPressThreshold, forKey: circleRingLongPressThresholdKey)
+        UserDefaults.standard.set(iconAppearAnimationType.rawValue, forKey: iconAppearAnimationTypeKey)
+        UserDefaults.standard.set(iconAppearSpeed, forKey: iconAppearSpeedKey)
+        UserDefaults.standard.set(useBlurEffectForCircleRing, forKey: useBlurEffectForCircleRingKey)
+        UserDefaults.standard.set(circleRingOpacity, forKey: circleRingOpacityKey)
+        
         // 立即同步所有设置
         UserDefaults.standard.synchronize()
+        
+        // 发布设置更改通知
+        NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
+        
         print("[AppSettings] 设置保存完成")
     }
     
     func incrementUsageCount() {
         totalUsageCount += 1
         UserDefaults.standard.set(totalUsageCount, forKey: usageCountKey)
+        
+        // 同时记录每日使用量
+        UsageStatsManager.shared.recordUsage()
     }
     
     func toggleLaunchAtLogin() {

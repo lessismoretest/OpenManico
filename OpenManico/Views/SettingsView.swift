@@ -31,9 +31,20 @@ struct SettingsView: View {
             }
             
             Section {
+                AppIconSelector()
+            } header: {
+                Text("应用图标")
+            }
+            
+            Section {
                 Toggle("开机自动启动", isOn: $settings.launchAtLogin)
                     .onChange(of: settings.launchAtLogin) { _ in
                         settings.toggleLaunchAtLogin()
+                    }
+                
+                Toggle("单击Option键切换上一个应用", isOn: $settings.switchToLastAppWithOptionClick)
+                    .onChange(of: settings.switchToLastAppWithOptionClick) { _ in
+                        settings.saveSettings()
                     }
                 
                 HStack {
@@ -78,7 +89,19 @@ struct SettingsView: View {
             Section {
                 LabeledContent("版本", value: Bundle.main.appVersion)
                 LabeledContent("开发者", value: "Less is more")
-                LabeledContent("使用次数", value: "\(settings.totalUsageCount)")
+                
+                DisclosureGroup {
+                    UsageChartView()
+                        .frame(height: 300)
+                        .padding(.top)
+                } label: {
+                    HStack {
+                        Text("使用次数")
+                        Spacer()
+                        Text("\(settings.totalUsageCount)")
+                            .foregroundColor(.secondary)
+                    }
+                }
                 
                 Link(destination: URL(string: "https://github.com/lessismoretest/OpenManico")!) {
                     HStack {

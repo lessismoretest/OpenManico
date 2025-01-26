@@ -14,6 +14,10 @@ OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过
 ## 应用截图
 
 <div align="center">
+  <img src="Screenshots/floating.png" width="800" alt="悬浮窗">
+  <p><em>悬浮窗界面</em></p>
+    <img src="Screenshots/circlering-setting.png" width="800" alt="圆环模式界面">
+  <p><em>圆环模式界面</em></p>
    <img src="Screenshots/home.png" width="800" alt="场景配置界面">
   <p><em>App配置界面</em></p>
   <img src="Screenshots/searchapp.png" width="800" alt="通用设置界面">
@@ -28,8 +32,8 @@ OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过
   <p><em>悬浮窗设置界面</em></p>
    <img src="Screenshots/group.png" width="800" alt="分组设置界面">
   <p><em>分组设置界面</em></p>
-  <img src="Screenshots/floating.png" width="800" alt="悬浮窗">
-  <p><em>悬浮窗界面</em></p>
+
+
 </div>
 
 ## 特性
@@ -38,7 +42,7 @@ OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过
 - 🌐 网站快捷键：使用 Option + Command + 数字键(1-9)或字母键(A-Z)快速打开网站
 - 🎯 场景管理：应用快捷键和网站快捷键支持场景管理，每个场景可以有不同的快捷键配置
 - 📂 分组管理：支持将应用和网站分组管理
-- 🔄 双向切换：再次按下相同快捷键可返回上一个应用
+- 🔄 双向切换：再次按下相同快捷键或单击Option键切换上一个应用
 - 🎨 主题切换：支持浅色/深色主题，可跟随系统
 - 📌 悬浮窗：支持显示悬浮窗显示模式及样式自定义
    - 支持显示所有快捷键应用
@@ -47,8 +51,7 @@ OpenManico 是一个纯 Cursor 编写的轻量级的 macOS 应用程序，通过
    - 支持显示应用切换器应用（类似 Command+Tab）  
 - ⚡️ 性能优异：后台运行，资源占用极低
 - 🔒 安全可靠：无需网络连接，数据本地存储
-- 💾 配置导出：支持导出快捷键配置到 JSON 文件
-- 📥 配置导入：支持从 JSON 文件导入快捷键配置，方便迁移和备份
+- 💾 配置备份：支持从 JSON 文件导入导出快捷键和分组
 
 ## 安装
 

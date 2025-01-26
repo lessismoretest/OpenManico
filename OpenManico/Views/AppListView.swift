@@ -205,17 +205,39 @@ struct AppListView: View {
         DispatchQueue.global(qos: .userInitiated).async {
             // 扫描应用程序文件夹
             let systemApps = getAppsInDirectory(at: URL(fileURLWithPath: "/Applications"))
+            let systemAppsDir = getAppsInDirectory(at: URL(fileURLWithPath: "/System/Applications"))
+            let systemUtilitiesDir = getAppsInDirectory(at: URL(fileURLWithPath: "/System/Applications/Utilities"))
             let userApps = getAppsInDirectory(at: URL(fileURLWithPath: NSString(string: "~/Applications").expandingTildeInPath))
             
             // 转换为 AppInfo 对象
-            let apps = (systemApps + userApps).compactMap { url -> AppInfo? in
-                guard let bundle = Bundle(url: url),
-                      let bundleId = bundle.bundleIdentifier,
-                      let name = bundle.infoDictionary?["CFBundleName"] as? String ?? url.deletingPathExtension().lastPathComponent as String? else {
-                    return nil
+            var apps = (systemApps + systemAppsDir + systemUtilitiesDir + userApps).compactMap { url -> AppInfo? in
+                // 尝试通过Bundle获取信息
+                if let bundle = Bundle(url: url),
+                   let bundleId = bundle.bundleIdentifier,
+                   let name = bundle.infoDictionary?["CFBundleName"] as? String ?? 
+                              bundle.infoDictionary?["CFBundleDisplayName"] as? String ??
+                              url.deletingPathExtension().lastPathComponent as String? {
+                    let icon = NSWorkspace.shared.icon(forFile: url.path)
+                    return AppInfo(bundleId: bundleId, name: name, icon: icon, url: url)
                 }
-                let icon = NSWorkspace.shared.icon(forFile: url.path)
-                return AppInfo(bundleId: bundleId, name: name, icon: icon, url: url)
+                return nil
+            }
+            
+            // 添加特殊系统应用（某些系统应用可能没有bundleIdentifier）
+            let specialSystemApps = [
+                ("com.apple.finder", "访达", "Finder"),
+                ("com.apple.systempreferences", "系统设置", "System Settings")
+            ]
+            
+            for (bundleId, localizedName, englishName) in specialSystemApps {
+                // 检查是否已经添加
+                if !apps.contains(where: { $0.bundleId == bundleId }) {
+                    // 尝试获取应用URL
+                    if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
+                        let icon = NSWorkspace.shared.icon(forFile: url.path)
+                        apps.append(AppInfo(bundleId: bundleId, name: localizedName, icon: icon, url: url))
+                    }
+                }
             }
             
             DispatchQueue.main.async {

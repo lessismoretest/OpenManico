@@ -2,6 +2,77 @@ import SwiftUI
 import AppKit
 
 /**
+ * 悬浮窗全局工具栏组件
+ */
+struct FloatingWindowToolbar: View {
+    @StateObject private var settings = AppSettings.shared
+    @Environment(\.colorScheme) private var systemColorScheme
+    
+    private var effectiveColorScheme: ColorScheme {
+        switch settings.floatingWindowTheme {
+        case .system:
+            return systemColorScheme
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
+    }
+    
+    private var textColor: Color {
+        effectiveColorScheme == .dark ? .white : .black.opacity(0.85)
+    }
+    
+    private var iconColor: Color {
+        effectiveColorScheme == .dark ? .white : .black.opacity(0.85)
+    }
+    
+    private var toolbarBackgroundColor: Color {
+        effectiveColorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.3)
+    }
+    
+    var body: some View {
+        HStack {
+            Spacer()
+            
+            Button(action: {
+                settings.isPinned.toggle()
+                if settings.isPinned {
+                    // 设置窗口置顶，不再响应点击空白处关闭
+                    DockIconsWindowController.shared.setPinned(true)
+                } else {
+                    // 取消窗口置顶，恢复点击空白处关闭
+                    DockIconsWindowController.shared.setPinned(false)
+                }
+            }) {
+                Image(systemName: settings.isPinned ? "pin.fill" : "pin")
+                    .font(.system(size: 13))
+                    .foregroundColor(iconColor)
+                    .frame(width: 24, height: 24)
+                    .background(settings.isPinned ? Color.blue.opacity(0.2) : Color.clear)
+                    .cornerRadius(4)
+            }
+            .buttonStyle(.plain)
+            .help("置顶窗口")
+            
+            Button(action: {
+                DockIconsWindowController.shared.hideWindow()
+            }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13))
+                    .foregroundColor(iconColor)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help("关闭窗口")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(toolbarBackgroundColor)
+    }
+}
+
+/**
  * Dock 栏程序图标视图
  */
 struct DockIconsView: View {
@@ -15,10 +86,12 @@ struct DockIconsView: View {
     @State private var selectedAppGroup: UUID?
     @State private var selectedWebGroup: UUID?
     @State private var webIcons: [UUID: NSImage] = [:]
-    @State private var optionKeyMonitor: Any?
     
     var body: some View {
         VStack(spacing: 0) {
+            // 全局工具栏
+            FloatingWindowToolbar()
+            
             if settings.showAppsInFloatingWindow {
                 TopToolbarView(
                     appDisplayMode: $appDisplayMode,
@@ -65,23 +138,10 @@ struct DockIconsView: View {
             startRunningAppsMonitor()
             setupHotKeys()
             
-            // 设置 Option 键监听
-            optionKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { event in
-                // 只有单独按 Option 键时才触发悬浮窗
-                let isOptionOnlyPressed = event.modifierFlags.intersection([.option, .command]) == .option
-                if isOptionOnlyPressed {
-                    DockIconsWindowController.shared.showWindow()
-                } else if !event.modifierFlags.contains(.option) || event.modifierFlags.contains(.command) {
-                    DockIconsWindowController.shared.hideWindow()
-                }
-            }
+            // 注意：Option键的监听由HotKeyManager统一处理，避免多处监听导致的冲突
         }
         .onDisappear {
-            // 移除 Option 键监听
-            if let monitor = optionKeyMonitor {
-                NSEvent.removeMonitor(monitor)
-                optionKeyMonitor = nil
-            }
+            // 不再需要移除Option键监听，因为已经在HotKeyManager中统一处理了
         }
         .onChange(of: appDisplayMode) { newMode in
             settings.appDisplayMode = newMode
@@ -298,6 +358,11 @@ private struct TopToolbarView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .onHover { hovering in
+                    if hovering {
+                        selectedAppGroup = nil
+                    }
+                }
                 
                 // 分组按钮
                 ForEach(AppGroupManager.shared.groups) { group in
@@ -442,6 +507,9 @@ private struct WebsiteIconView: View {
                 }
             },
             onTap: {
+                // 增加使用次数
+                AppSettings.shared.incrementUsageCount()
+                
                 if let url = URL(string: website.url) {
                     NSWorkspace.shared.open(url)
                 }
@@ -550,6 +618,11 @@ private struct WebShortcutToolbarView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .onHover { hovering in
+                    if hovering {
+                        selectedWebGroup = nil
+                    }
+                }
                 
                 // 分组按钮
                 ForEach(websiteManager.groups) { group in
@@ -576,20 +649,18 @@ private struct WebShortcutToolbarView: View {
 
 struct IconView<Label: View>: View {
     @StateObject private var settings = AppSettings.shared
+    @State private var isHovering = false
     let icon: NSImage
     let size: CGFloat
     let label: Label
-    let onHover: ((Bool) -> Void)?
     let onTap: (() -> Void)?
     let shortcutKey: String?
     let isWebsite: Bool
-    @State private var isHovering = false
     
     init(
         icon: NSImage,
         size: CGFloat,
         @ViewBuilder label: () -> Label,
-        onHover: ((Bool) -> Void)? = nil,
         onTap: (() -> Void)? = nil,
         shortcutKey: String? = nil,
         isWebsite: Bool = false
@@ -597,7 +668,6 @@ struct IconView<Label: View>: View {
         self.icon = icon
         self.size = size
         self.label = label()
-        self.onHover = onHover
         self.onTap = onTap
         self.shortcutKey = shortcutKey
         self.isWebsite = isWebsite
@@ -652,15 +722,14 @@ struct IconView<Label: View>: View {
                     }
                 }
             }
+            .onHover { hovering in
+                isHovering = hovering
+            }
             .onTapGesture {
                 onTap?()
             }
             
             label
-        }
-        .onHover { hovering in
-            isHovering = hovering
-            onHover?(hovering)
         }
     }
     
@@ -713,6 +782,9 @@ struct AppIconView: View {
                 }
             },
             onTap: {
+                // 增加使用次数
+                AppSettings.shared.incrementUsageCount()
+                
                 if let url = app.url {
                     NSWorkspace.shared.open(url)
                 }
@@ -731,6 +803,8 @@ class DockIconsWindowController {
     private var window: NSWindow?
     @objc private var isVisible = false
     private var observer: NSObjectProtocol?
+    private var backgroundMonitor: Any? // 用于监听点击空白区域
+    private var isPinned = false // 窗口是否置顶
     
     private init() {
         // 监听窗口大小设置变化
@@ -748,6 +822,50 @@ class DockIconsWindowController {
     deinit {
         if let observer = observer {
             NotificationCenter.default.removeObserver(observer)
+        }
+        removeBackgroundMonitor()
+    }
+    
+    // 设置窗口置顶状态
+    func setPinned(_ pinned: Bool) {
+        self.isPinned = pinned
+        if pinned {
+            // 如果置顶，移除背景点击监听器
+            removeBackgroundMonitor()
+            
+            // 设置窗口层级为浮动+1，确保在其他浮动窗口之上
+            window?.level = .floating + 1
+        } else {
+            // 如果不置顶，添加背景点击监听器
+            setupBackgroundMonitor()
+            
+            // 恢复正常窗口层级
+            window?.level = .floating
+        }
+    }
+    
+    // 添加背景点击监听器
+    private func setupBackgroundMonitor() {
+        // 如果窗口已置顶，则不添加监听器
+        if isPinned {
+            return
+        }
+        
+        // 先移除之前的监听器
+        removeBackgroundMonitor()
+        
+        // 添加新的监听器，监听全局鼠标点击事件
+        backgroundMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            // 点击任何区域都会触发此回调，关闭窗口
+            self?.hideWindow()
+        }
+    }
+    
+    // 移除背景点击监听器
+    private func removeBackgroundMonitor() {
+        if let monitor = backgroundMonitor {
+            NSEvent.removeMonitor(monitor)
+            backgroundMonitor = nil
         }
     }
     
@@ -872,17 +990,16 @@ class DockIconsWindowController {
             y = max(screenFrame.minY, min(y, screenFrame.maxY - windowFrame.height))
             
             window.setFrameOrigin(NSPoint(x: x, y: y))
-            
-            // 如果是自定义位置，保存当前位置
-            if settings.windowPosition == .custom {
-                settings.floatingWindowX = x
-                settings.floatingWindowY = y
-            }
         }
     }
     
     // 显示窗口
     func showWindow() {
+        // 如果悬浮窗功能被禁用，直接返回
+        if !AppSettings.shared.showFloatingWindow {
+            return
+        }
+        
         if window == nil {
             let view = DockIconsView()
             let hostingView = NSHostingView(rootView: view)
@@ -936,12 +1053,35 @@ class DockIconsWindowController {
         updateWindow()
         window?.orderFront(nil)
         isVisible = true
+        
+        // 检查当前是否为置顶状态
+        if AppSettings.shared.isPinned {
+            setPinned(true)
+        } else {
+            // 添加背景点击监听
+            setupBackgroundMonitor()
+        }
     }
     
     // 隐藏窗口
     func hideWindow() {
+        print("🔽 窗口控制器：隐藏悬浮窗")
+        
+        // 执行窗口隐藏操作
         window?.orderOut(nil)
         isVisible = false
+        
+        // 移除背景点击监听
+        removeBackgroundMonitor()
+        
+        // 如果当前是置顶状态，取消置顶
+        if isPinned {
+            AppSettings.shared.isPinned = false
+            isPinned = false
+        }
+        
+        // 通知HotKeyManager窗口已关闭
+        HotKeyManager.shared.notifyWindowClosed()
     }
     
     func toggleWindow() {

@@ -41,9 +41,9 @@ struct FloatingWindowSettingsView: View {
                     }
                 }
                 
-                // 交互设置组
+                // 悬停动画设置组
                 Group {
-                    InteractionSection(settings: settings)
+                    HoverAnimationSection(settings: settings)
                 }
                 
                 // 说明信息组
@@ -86,6 +86,33 @@ struct FloatingWindowSettingsView: View {
 }
 
 /**
+ * 通用滑块行组件
+ */
+private struct SliderRow: View {
+    let title: String
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    var valueFormatter: ((Double) -> String)?
+    var onChange: (() -> Void)?
+    
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(title)
+            HStack {
+                Slider(value: $value, in: range, step: step)
+                    .onChange(of: value) { _ in
+                        onChange?()
+                    }
+                Text(valueFormatter?(value) ?? "\(Int(value))")
+                    .frame(width: 50)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+/**
  * 基础设置区域
  */
 private struct BasicSettingsSection: View {
@@ -114,7 +141,7 @@ private struct WindowSizeSection: View {
             SliderRow(
                 title: "窗口宽度",
                 value: $settings.floatingWindowWidth,
-                range: 400...1200,
+                range: 50...1600,
                 step: 50,
                 onChange: { DockIconsWindowController.shared.updateWindow() }
             )
@@ -122,7 +149,7 @@ private struct WindowSizeSection: View {
             SliderRow(
                 title: "窗口高度",
                 value: $settings.floatingWindowHeight,
-                range: 300...800,
+                range: 50...1200,
                 step: 50,
                 onChange: { DockIconsWindowController.shared.updateWindow() }
             )
@@ -253,7 +280,7 @@ private struct IconSettingsSection: View {
             SliderRow(
                 title: "应用图标大小",
                 value: $settings.appIconSize,
-                range: 32...64,
+                range: 16...128,
                 step: 4
             )
             
@@ -261,7 +288,7 @@ private struct IconSettingsSection: View {
                 SliderRow(
                     title: "网站图标大小",
                     value: $settings.webIconSize,
-                    range: 32...64,
+                    range: 16...128,
                     step: 4
                 )
             }
@@ -272,16 +299,6 @@ private struct IconSettingsSection: View {
                 range: 0...16,
                 step: 1
             )
-            
-            SliderRow(
-                title: "边框宽度",
-                value: $settings.iconBorderWidth,
-                range: 0...4,
-                step: 0.5,
-                valueFormatter: { String(format: "%.1f", $0) }
-            )
-            
-            ColorPicker("边框颜色", selection: $settings.iconBorderColor)
             
             SliderRow(
                 title: "图标间距",
@@ -438,57 +455,13 @@ private struct ShortcutLabelSection: View {
 }
 
 /**
- * 通用滑块行组件
+ * 悬停动画设置区域
  */
-private struct SliderRow: View {
-    let title: String
-    @Binding var value: Double
-    let range: ClosedRange<Double>
-    let step: Double
-    var valueFormatter: ((Double) -> String)?
-    var onChange: (() -> Void)?
-    
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text(title)
-            HStack {
-                Slider(value: $value, in: range, step: step)
-                    .onChange(of: value) { _ in
-                        onChange?()
-                    }
-                Text(valueFormatter?(value) ?? "\(Int(value))")
-                    .frame(width: 50)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-/**
- * 交互设置区域
- */
-private struct InteractionSection: View {
+private struct HoverAnimationSection: View {
     @ObservedObject var settings: AppSettings
     
     var body: some View {
         Section {
-            Toggle("鼠标滑过时打开应用", isOn: $settings.showWindowOnHover)
-                .onChange(of: settings.showWindowOnHover) { _ in
-                    settings.saveSettings()
-                }
-            
-            if settings.showWebShortcutsInFloatingWindow {
-                Toggle("鼠标滑过时打开网站", isOn: $settings.openWebOnHover)
-                    .onChange(of: settings.openWebOnHover) { _ in
-                        settings.saveSettings()
-                    }
-            }
-            
-            Toggle("鼠标悬停时松开按键打开", isOn: $settings.openOnMouseHover)
-                .onChange(of: settings.openOnMouseHover) { _ in
-                    settings.saveSettings()
-                }
-            
             Toggle("启用悬停动画", isOn: $settings.useHoverAnimation)
             
             if settings.useHoverAnimation {
@@ -503,13 +476,23 @@ private struct InteractionSection: View {
                 SliderRow(
                     title: "动画时长",
                     value: $settings.hoverAnimationDuration,
-                    range: 0.1...0.5,
+                    range: 0.1...0.8,
                     step: 0.05,
                     valueFormatter: { String(format: "%.2f", $0) }
                 )
+                
+                SliderRow(
+                    title: "边框宽度",
+                    value: $settings.iconBorderWidth,
+                    range: 0...4,
+                    step: 0.5,
+                    valueFormatter: { String(format: "%.1f", $0) }
+                )
+                
+                ColorPicker("边框颜色", selection: $settings.iconBorderColor)
             }
         } header: {
-            Text("交互行为")
+            Text("悬停动画")
         }
     }
 }
@@ -603,7 +586,11 @@ private struct DividerSection: View {
 private struct InstructionSection: View {
     var body: some View {
         Section {
-            Text("长按 Option 键显示悬浮窗")
+            Text("双击 Option 键可以显示或固定悬浮窗")
+                .font(.callout)
+                .foregroundColor(.secondary)
+            
+            Text("再次双击 Option 键可隐藏悬浮窗")
                 .font(.callout)
                 .foregroundColor(.secondary)
             

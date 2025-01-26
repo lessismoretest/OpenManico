@@ -1,0 +1,511 @@
+{
+  "appShortcuts" : [
+    {
+      "appName" : "ChatGPT",
+      "id" : "3F2E6A63-BD76-4D45-BA2C-5B7454DA1A66",
+      "bundleIdentifier" : "com.openai.chat",
+      "key" : "2"
+    },
+    {
+      "appName" : "Cursor",
+      "id" : "73DE1AE2-F84F-4DA8-8ED8-4CF13EBEBAB4",
+      "bundleIdentifier" : "com.todesktop.230313mzl4w4u92",
+      "key" : "3"
+    },
+    {
+      "appName" : "1Password.app",
+      "id" : "5DF1DAC0-76FB-43F3-997A-616B3D4A1374",
+      "bundleIdentifier" : "com.1password.1password",
+      "key" : "1"
+    },
+    {
+      "appName" : "Arc",
+      "id" : "FFC84421-B43D-4B43-86E5-88769822006E",
+      "bundleIdentifier" : "company.thebrowser.Browser",
+      "key" : "A"
+    },
+    {
+      "appName" : "Safari浏览器",
+      "id" : "8EDA9039-ABE1-4A72-8C50-23BC64F91D41",
+      "bundleIdentifier" : "com.apple.Safari",
+      "key" : "S"
+    },
+    {
+      "appName" : "Xcode",
+      "id" : "29FF1D5F-EA47-425C-AE00-9FB4A6CF951D",
+      "bundleIdentifier" : "com.apple.dt.Xcode",
+      "key" : "X"
+    },
+    {
+      "appName" : "QQ",
+      "id" : "DC983B6F-49F7-4B98-9E06-F58D985538C7",
+      "bundleIdentifier" : "com.tencent.qq",
+      "key" : "Q"
+    },
+    {
+      "appName" : "Telegram",
+      "id" : "24127476-3A42-4CFA-8A61-F2E8471F834B",
+      "bundleIdentifier" : "ru.keepcoder.Telegram",
+      "key" : "T"
+    },
+    {
+      "id" : "3622A580-EEB4-4428-8738-69C995929982",
+      "appName" : "飞书",
+      "key" : "L",
+      "bundleIdentifier" : "com.electron.lark"
+    },
+    {
+      "id" : "C42BAB2A-7584-4547-AA2E-CC9BECE65B92",
+      "appName" : "访达",
+      "key" : "F",
+      "bundleIdentifier" : "com.apple.finder"
+    },
+    {
+      "id" : "DA5824BD-70A9-408D-97D2-A8EEC5C83E6D",
+      "appName" : "GitHub Desktop",
+      "key" : "G",
+      "bundleIdentifier" : "com.github.GitHubClient"
+    },
+    {
+      "key" : "H",
+      "bundleIdentifier" : "com.apple.Home",
+      "id" : "75A6178F-C349-45A5-A9D8-560B064CDD59",
+      "appName" : "家庭"
+    },
+    {
+      "key" : "C",
+      "bundleIdentifier" : "com.google.Chrome",
+      "id" : "F3D9B97E-AD1B-4FEA-8A43-332214DE7A18",
+      "appName" : "Google Chrome"
+    },
+    {
+      "key" : "N",
+      "bundleIdentifier" : "notion.id",
+      "id" : "1A90FC44-2E43-49B3-B16D-97648C3611B4",
+      "appName" : "Notion"
+    },
+    {
+      "key" : "E",
+      "bundleIdentifier" : "com.apple.Photos",
+      "id" : "5CA76110-F361-4222-AAF2-961C9ECB3DBB",
+      "appName" : "照片"
+    },
+    {
+      "key" : "Z",
+      "bundleIdentifier" : "com.apple.Photos",
+      "id" : "8DF92F8B-2C3C-4159-AB76-968260E0DE10",
+      "appName" : "照片"
+    },
+    {
+      "key" : "W",
+      "bundleIdentifier" : "com.tencent.xinWeChat",
+      "id" : "BEB6073B-F7A3-4076-96B5-F1BC34BF5015",
+      "appName" : "微信"
+    },
+    {
+      "key" : "D",
+      "bundleIdentifier" : "com.bot.pc.doubao",
+      "id" : "7627AED1-3FF7-44DF-9EF8-1B638FF8C5B8",
+      "appName" : "豆包.app"
+    },
+    {
+      "key" : "P",
+      "bundleIdentifier" : "com.quora.poe.electron",
+      "id" : "EC94E35E-1452-4F3B-90CB-22A14515FF03",
+      "appName" : "Poe.app"
+    }
+  ],
+  "version" : "0.1.0",
+  "websiteGroups" : [
+    {
+      "websiteIds" : [
+
+      ],
+      "name" : "默认",
+      "id" : "2D1A99B0-2257-456E-8836-B459C2F06253"
+    },
+    {
+      "websiteIds" : [
+
+      ],
+      "name" : "🐒 coding",
+      "id" : "70FFF58F-2688-41EB-86C8-990F85A21F76"
+    },
+    {
+      "websiteIds" : [
+
+      ],
+      "name" : "🔧 ai",
+      "id" : "64A83D6A-C668-4AF5-9232-C7EA74245FE6"
+    },
+    {
+      "websiteIds" : [
+
+      ],
+      "name" : "📰 news",
+      "id" : "6BE90960-744E-437A-9CB0-908890173FDB"
+    },
+    {
+      "websiteIds" : [
+
+      ],
+      "name" : "💫 SNS",
+      "id" : "BD0ACB8C-D7C0-4210-8436-AEEEBA311334"
+    },
+    {
+      "websiteIds" : [
+
+      ],
+      "name" : "🏖️ av",
+      "id" : "C3784E2A-4F99-400B-B0D0-8B03DC5DF84B"
+    }
+  ],
+  "appGroups" : [
+    {
+      "apps" : [
+
+      ],
+      "id" : "9AEAACB0-C8ED-46D4-8DB0-2113FD9D7928",
+      "name" : "默认"
+    },
+    {
+      "apps" : [
+        {
+          "name" : "Chrome",
+          "bundleId" : "com.google.Chrome"
+        },
+        {
+          "name" : "Firefox",
+          "bundleId" : "org.mozilla.firefox"
+        },
+        {
+          "name" : "Arc",
+          "bundleId" : "company.thebrowser.Browser"
+        }
+      ],
+      "id" : "CFA3F72E-0465-4C4F-B71B-BBA6755286D2",
+      "name" : "🏄🏻 browser"
+    },
+    {
+      "apps" : [
+        {
+          "bundleId" : "com.alibaba.DingTalkMac",
+          "name" : "DingTalk"
+        },
+        {
+          "bundleId" : "com.hnc.Discord",
+          "name" : "Discord"
+        },
+        {
+          "bundleId" : "com.electron.lark",
+          "name" : "Feishu"
+        },
+        {
+          "bundleId" : "com.tencent.qq",
+          "name" : "QQ"
+        },
+        {
+          "bundleId" : "ru.keepcoder.Telegram",
+          "name" : "Telegram"
+        },
+        {
+          "bundleId" : "com.tencent.xinWeChat",
+          "name" : "WeChat"
+        },
+        {
+          "bundleId" : "com.tencent.meeting",
+          "name" : "腾讯会议"
+        }
+      ],
+      "id" : "1694092F-A4B8-4611-9EC6-EE2466C3D672",
+      "name" : "💬 IM"
+    },
+    {
+      "apps" : [
+        {
+          "bundleId" : "com.microsoft.VSCode",
+          "name" : "Code"
+        },
+        {
+          "bundleId" : "com.todesktop.230313mzl4w4u92",
+          "name" : "Cursor"
+        },
+        {
+          "bundleId" : "com.kapeli.dashdoc",
+          "name" : "Dash"
+        },
+        {
+          "bundleId" : "com.github.GitHubClient",
+          "name" : "GitHub Desktop"
+        },
+        {
+          "bundleId" : "com.apple.dt.Xcode",
+          "name" : "Xcode"
+        },
+        {
+          "bundleId" : "com.alibaba-cloud.client",
+          "name" : "Alibaba Cloud Client"
+        },
+        {
+          "bundleId" : "com.mitchellh.ghostty",
+          "name" : "Ghostty"
+        },
+        {
+          "bundleId" : "com.oracle.workbench.MySQLWorkbench",
+          "name" : "MySQLWorkbench"
+        },
+        {
+          "bundleId" : "com.navicat.NavicatForMySQL",
+          "name" : "Navicat for MySQL"
+        },
+        {
+          "bundleId" : "com.jetbrains.pycharm.ce",
+          "name" : "PyCharm"
+        },
+        {
+          "bundleId" : "com.renfei.SnippetsLab",
+          "name" : "SnippetsLab"
+        },
+        {
+          "name" : "Sublime Text",
+          "bundleId" : "com.sublimetext.4"
+        },
+        {
+          "name" : "Warp",
+          "bundleId" : "dev.warp.Warp-Stable"
+        },
+        {
+          "name" : "Windsurf",
+          "bundleId" : "com.exafunction.windsurf"
+        }
+      ],
+      "id" : "D659117B-615A-4A8E-9502-4CC61B74971C",
+      "name" : "🐒 coding"
+    },
+    {
+      "apps" : [
+        {
+          "bundleId" : "com.figma.Desktop",
+          "name" : "Figma"
+        },
+        {
+          "bundleId" : "com.pixelmatorteam.pixelmator.x",
+          "name" : "Pixelmator Pro"
+        },
+        {
+          "bundleId" : "com.rightfontapp.RightFont5",
+          "name" : "RightFont"
+        },
+        {
+          "bundleId" : "com.apple.SFSymbols",
+          "name" : "SF Symbols"
+        },
+        {
+          "bundleId" : "com.bohemiancoding.sketch3",
+          "name" : "Sketch"
+        },
+        {
+          "bundleId" : "io.sipapp.Sip-paddle",
+          "name" : "Sip"
+        }
+      ],
+      "id" : "7E2AC426-E412-4663-B858-02B6A1D9EA82",
+      "name" : "🌷 design"
+    },
+    {
+      "apps" : [
+        {
+          "name" : "APTV",
+          "bundleId" : "com.kimen.aptvpro"
+        },
+        {
+          "name" : "IINA",
+          "bundleId" : "com.colliderli.iina"
+        },
+        {
+          "name" : "NeteaseMusic",
+          "bundleId" : "com.netease.163music"
+        },
+        {
+          "name" : "Open the F**king TV Right Now",
+          "bundleId" : "com.zisa.Open-the-F--king-TV-Right-Now"
+        },
+        {
+          "name" : "VLC",
+          "bundleId" : "org.videolan.vlc"
+        },
+        {
+          "name" : "VideoFusion-macOS",
+          "bundleId" : "com.lemon.lvpro"
+        }
+      ],
+      "id" : "1003E3BA-8085-47C3-93EB-C851749B7CC7",
+      "name" : "🏖️ av"
+    },
+    {
+      "id" : "D83C46CF-4372-46EA-82D1-A1C6D9576826",
+      "apps" : [
+        {
+          "bundleId" : "com.openai.chat",
+          "name" : "ChatGPT"
+        },
+        {
+          "bundleId" : "xyz.chatboxapp.app",
+          "name" : "Chatbox"
+        },
+        {
+          "bundleId" : "com.bot.pc.doubao",
+          "name" : "Doubao"
+        },
+        {
+          "bundleId" : "com.liuliu.draw-things",
+          "name" : "Draw Things"
+        },
+        {
+          "bundleId" : "org.videolan.vlc",
+          "name" : "VLC"
+        }
+      ],
+      "name" : "✨ ai"
+    },
+    {
+      "id" : "0991C2EA-486D-4272-A6BB-DA162DA1A2DC",
+      "apps" : [
+        {
+          "name" : "Excel",
+          "bundleId" : "com.microsoft.Excel"
+        },
+        {
+          "name" : "wpsoffice",
+          "bundleId" : "com.kingsoft.wpsoffice.mac"
+        },
+        {
+          "name" : "PDF Expert",
+          "bundleId" : "com.readdle.PDFExpert-Mac"
+        }
+      ],
+      "name" : "📊 office"
+    }
+  ],
+  "timestamp" : "2025-04-20T15:42:19Z",
+  "websites" : [
+    {
+      "name" : "Bilibili",
+      "groupIds" : [
+        "C3784E2A-4F99-400B-B0D0-8B03DC5DF84B"
+      ],
+      "isEnabled" : true,
+      "id" : "6741FE35-8DD1-4747-885B-6B4E7067814B",
+      "shortcutKey" : "B",
+      "url" : "http:\/\/bilibili.com\/"
+    },
+    {
+      "name" : "ChatGPT",
+      "groupIds" : [
+        "64A83D6A-C668-4AF5-9232-C7EA74245FE6"
+      ],
+      "shortcutKey" : "C",
+      "isEnabled" : true,
+      "url" : "https:\/\/chatgpt.com\/",
+      "id" : "2E278B0B-3742-4BD0-A4A7-979DA2B0812B"
+    },
+    {
+      "name" : "Gemini",
+      "groupIds" : [
+        "64A83D6A-C668-4AF5-9232-C7EA74245FE6"
+      ],
+      "isEnabled" : true,
+      "url" : "https:\/\/aistudio.google.com\/prompts\/1aYhIjjv4zme5WB4L0If7M44NUCs1hq5w",
+      "id" : "91A41493-399C-43B6-B2B9-16DBF96D5226"
+    },
+    {
+      "name" : "IT之家",
+      "groupIds" : [
+        "6BE90960-744E-437A-9CB0-908890173FDB"
+      ],
+      "shortcutKey" : "I",
+      "isEnabled" : true,
+      "url" : "https:\/\/www.ithome.com\/",
+      "id" : "7EFA5784-D582-4A8E-AF4B-6B09436BBD30"
+    },
+    {
+      "name" : "X",
+      "groupIds" : [
+        "BD0ACB8C-D7C0-4210-8436-AEEEBA311334"
+      ],
+      "shortcutKey" : "T",
+      "isEnabled" : true,
+      "url" : "https:\/\/twitter.com\/home",
+      "id" : "A2CDFDD1-F284-403E-9DDB-1DCEBF9F5CCB"
+    },
+    {
+      "name" : "Youtube",
+      "groupIds" : [
+        "C3784E2A-4F99-400B-B0D0-8B03DC5DF84B"
+      ],
+      "shortcutKey" : "Y",
+      "isEnabled" : true,
+      "url" : "https:\/\/www.youtube.com\/feed\/you",
+      "id" : "1DA85B3A-8041-4EED-AC7F-CD75B7B45657"
+    },
+    {
+      "name" : "github.com",
+      "groupIds" : [
+        "70FFF58F-2688-41EB-86C8-990F85A21F76"
+      ],
+      "shortcutKey" : "G",
+      "isEnabled" : true,
+      "url" : "https:\/\/github.com\/lessismoretest?tab=repositories",
+      "id" : "3C46AE08-C147-4154-BABA-B9ECAEDAD1CB"
+    },
+    {
+      "name" : "小红书",
+      "groupIds" : [
+        "BD0ACB8C-D7C0-4210-8436-AEEEBA311334"
+      ],
+      "shortcutKey" : "X",
+      "isEnabled" : true,
+      "url" : "https:\/\/www.xiaohongshu.com\/explore",
+      "id" : "CFFD6E84-5051-486A-B57A-9AA66B18B669"
+    },
+    {
+      "name" : "晚点Latepost",
+      "groupIds" : [
+        "6BE90960-744E-437A-9CB0-908890173FDB"
+      ],
+      "isEnabled" : true,
+      "url" : "https:\/\/www.latepost.com\/",
+      "id" : "DC96D655-8D74-474A-A653-EB1EE5AA1EB0"
+    },
+    {
+      "name" : "知乎",
+      "groupIds" : [
+        "BD0ACB8C-D7C0-4210-8436-AEEEBA311334"
+      ],
+      "shortcutKey" : "Z",
+      "isEnabled" : true,
+      "url" : "https:\/\/www.zhihu.com\/hot",
+      "id" : "0D6E22C1-908D-4471-B133-A086EBF91F76"
+    },
+    {
+      "name" : "语鲸",
+      "groupIds" : [
+        "2D1A99B0-2257-456E-8836-B459C2F06253",
+        "6BE90960-744E-437A-9CB0-908890173FDB"
+      ],
+      "shortcutKey" : "1",
+      "isEnabled" : true,
+      "url" : "https:\/\/lingowhale.com\/channels?channel_id=lingo_summary",
+      "id" : "E0D56113-24AC-4FF5-9CB8-471DB58337EE"
+    },
+    {
+      "name" : "豆瓣",
+      "groupIds" : [
+        "BD0ACB8C-D7C0-4210-8436-AEEEBA311334"
+      ],
+      "isEnabled" : true,
+      "url" : "https:\/\/book.douban.com\/",
+      "id" : "CF5AB3E4-06A3-4CDE-9E03-8EF738E520E8"
+    }
+  ]
+}
