@@ -67,10 +67,11 @@ struct DockIconsView: View {
             
             // 设置 Option 键监听
             optionKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { event in
-                let isOptionKeyPressed = event.modifierFlags.contains(.option)
-                if isOptionKeyPressed {
+                // 只有单独按 Option 键时才触发悬浮窗
+                let isOptionOnlyPressed = event.modifierFlags.intersection([.option, .command]) == .option
+                if isOptionOnlyPressed {
                     DockIconsWindowController.shared.showWindow()
-                } else {
+                } else if !event.modifierFlags.contains(.option) || event.modifierFlags.contains(.command) {
                     DockIconsWindowController.shared.hideWindow()
                 }
             }
@@ -279,7 +280,9 @@ private struct TopToolbarView: View {
                     .background(Color.primary.opacity(0.3))
                 
                 // 全部应用按钮
-                Button(action: {}) {
+                Button(action: {
+                    selectedAppGroup = nil
+                }) {
                     let totalCount = switch appDisplayMode {
                         case .all: installedApps.count
                         case .runningOnly: runningApps.count
@@ -295,15 +298,12 @@ private struct TopToolbarView: View {
                         )
                 }
                 .buttonStyle(.plain)
-                .onHover { hovering in
-                    if hovering {
-                        selectedAppGroup = nil
-                    }
-                }
                 
                 // 分组按钮
                 ForEach(AppGroupManager.shared.groups) { group in
-                    Button(action: {}) {
+                    Button(action: {
+                        selectedAppGroup = group.id
+                    }) {
                         Text("\(group.name) (\(getGroupAppCount(group: group)))")
                             .foregroundColor(getTextColor(isSelected: selectedAppGroup == group.id))
                             .padding(.horizontal, 12)
@@ -314,11 +314,6 @@ private struct TopToolbarView: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .onHover { hovering in
-                        if hovering {
-                            selectedAppGroup = group.id
-                        }
-                    }
                 }
             }
             .padding(.horizontal, 8)
@@ -542,7 +537,9 @@ private struct WebShortcutToolbarView: View {
                     .background(Color.primary.opacity(0.3))
                 
                 // 全部网站按钮
-                Button(action: {}) {
+                Button(action: {
+                    selectedWebGroup = nil
+                }) {
                     Text("全部")
                         .foregroundColor(getTextColor(isSelected: selectedWebGroup == nil))
                         .padding(.horizontal, 12)
@@ -553,15 +550,12 @@ private struct WebShortcutToolbarView: View {
                         )
                 }
                 .buttonStyle(.plain)
-                .onHover { hovering in
-                    if hovering {
-                        selectedWebGroup = nil
-                    }
-                }
                 
                 // 分组按钮
                 ForEach(websiteManager.groups) { group in
-                    Button(action: {}) {
+                    Button(action: {
+                        selectedWebGroup = group.id
+                    }) {
                         Text(group.name)
                             .foregroundColor(getTextColor(isSelected: selectedWebGroup == group.id))
                             .padding(.horizontal, 12)
@@ -572,11 +566,6 @@ private struct WebShortcutToolbarView: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .onHover { hovering in
-                        if hovering {
-                            selectedWebGroup = group.id
-                        }
-                    }
                 }
             }
             .padding(.horizontal, 8)
