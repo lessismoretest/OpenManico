@@ -651,6 +651,9 @@ struct CircleRingView: View {
         }
         .onChange(of: circleController.contentMode) { _ in
             loadApps()
+            DispatchQueue.main.async {
+                refreshSelectionAtCurrentMousePosition()
+            }
         }
         .onChange(of: settings.circleRingApps) { _ in
             if circleController.contentMode == .apps {
@@ -699,6 +702,37 @@ struct CircleRingView: View {
                 }
             }
         }
+    }
+
+    private func refreshSelectionAtCurrentMousePosition() {
+        // 切换 app/website 模式后，立即按当前鼠标位置重算扇区，
+        // 避免控制器已清空 selectedAppIndex 但视图尚未重新选中。
+        var circleRingWindow: NSWindow?
+
+        for window in NSApp.windows where window.isVisible && window.title.isEmpty {
+            if abs(window.frame.width - settings.circleRingDiameter) < 10 {
+                circleRingWindow = window
+                break
+            }
+        }
+
+        if circleRingWindow == nil {
+            for window in NSApp.windows where window.isVisible && window.level.rawValue >= NSWindow.Level.popUpMenu.rawValue {
+                circleRingWindow = window
+                break
+            }
+        }
+
+        guard let window = circleRingWindow else {
+            print("[CircleRingView] 刷新选择时无法找到圆环窗口")
+            return
+        }
+
+        let mouseLocation = NSEvent.mouseLocation
+        let windowOrigin = window.frame.origin
+        let viewX = mouseLocation.x - windowOrigin.x
+        let viewY = mouseLocation.y - windowOrigin.y
+        handleMouseMoved(location: CGPoint(x: viewX, y: viewY))
     }
     
     // 实际处理鼠标移动的逻辑 - 从原有的handleMouseMoved拆分出来

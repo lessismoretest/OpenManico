@@ -148,16 +148,16 @@ class CircleRingController: ObservableObject {
             let isCommandKeyDown = event.modifierFlags.contains(.command)
 
             guard isOptionKeyDown != lastObservedOptionState else {
-                if isOptionKeyDown && !isVisible {
-                    contentMode = isCommandKeyDown ? .websites : .apps
+                if isOptionKeyDown {
+                    updateContentModeWhileOptionHeld(isCommandKeyDown: isCommandKeyDown)
                 }
                 return
             }
 
             lastObservedOptionState = isOptionKeyDown
 
-            if isOptionKeyDown && !isVisible {
-                contentMode = isCommandKeyDown ? .websites : .apps
+            if isOptionKeyDown {
+                updateContentModeWhileOptionHeld(isCommandKeyDown: isCommandKeyDown)
             }
             
             if isDebugging {
@@ -417,6 +417,33 @@ class CircleRingController: ObservableObject {
             return AppSettings.shared.circleRingApps.count
         case .websites:
             return AppSettings.shared.circleRingWebsites.count
+        }
+    }
+
+    private func updateContentMode(_ newMode: ContentMode) {
+        guard contentMode != newMode || (isVisible && activeSessionContentMode != newMode) else {
+            return
+        }
+
+        contentMode = newMode
+
+        if isVisible {
+            activeSessionContentMode = newMode
+            selectedAppIndex = nil
+        }
+    }
+
+    private func updateContentModeWhileOptionHeld(isCommandKeyDown: Bool) {
+        if !isVisible {
+            updateContentMode(isCommandKeyDown ? .websites : .apps)
+            return
+        }
+
+        // 圆环已经显示后，允许从应用切到网站，
+        // 但不要因为先松 Command 又把当前会话切回应用，
+        // 否则最终松 Option 时会按错误模式打开。
+        if isCommandKeyDown && activeSessionContentMode == .apps {
+            updateContentMode(.websites)
         }
     }
 
