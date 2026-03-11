@@ -4,3 +4,5 @@ xhs-images/
 .derived/
 perf/
 DerivedData/
+build/
+dist/

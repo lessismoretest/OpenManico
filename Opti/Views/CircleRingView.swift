@@ -357,9 +357,7 @@ struct CircleRingView: View {
                         
                         // 如果鼠标离开视图，清除悬停索引
                         if !isHovered {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                hoveredIndex = nil
-                            }
+                            clearCurrentSelection()
                         } else {
                             // 鼠标进入时，立即检测位置
                             DispatchQueue.main.async {
@@ -733,6 +731,15 @@ struct CircleRingView: View {
         let viewX = mouseLocation.x - windowOrigin.x
         let viewY = mouseLocation.y - windowOrigin.y
         handleMouseMoved(location: CGPoint(x: viewX, y: viewY))
+    }
+
+    private func clearCurrentSelection() {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            hoveredIndex = nil
+        }
+        selectedIndex = nil
+        circleController.selectedAppIndex = nil
+        previousSectorIndex = nil
     }
     
     // 实际处理鼠标移动的逻辑 - 从原有的handleMouseMoved拆分出来
