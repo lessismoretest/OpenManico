@@ -59,10 +59,18 @@ struct CircleRingSettingsView: View {
         var id: Int { index }
     }
 
+    private struct WebsiteSectorSelection: Identifiable {
+        let index: Int
+        var id: Int { index }
+    }
+
     @StateObject private var settings = AppSettings.shared
+    @StateObject private var websiteManager = WebsiteManager.shared
     @State private var installedApps: [AppInfo] = []
     @State private var selectedSectorIndex: Int? = nil
     @State private var appSelectorSector: SectorSelection? = nil
+    @State private var websiteSelectorSector: WebsiteSectorSelection? = nil
+    @State private var selectedWebsiteSectorIndex: Int? = nil
     @State private var predefinedImages: [PredefinedImage] = []
     @State private var isLoadingImages: Bool = false
     
@@ -121,8 +129,12 @@ struct CircleRingSettingsView: View {
                         sectorCount: settings.circleRingSectorCount,
                         apps: getConfiguredApps(),
                         selectedIndex: $selectedSectorIndex,
+                        selectionHint: "拖拽图标调整位置 • 点击扇区选择应用",
                         onSelectSector: { index in
                             configureAppForSector(index)
+                        },
+                        onSwapSectors: { index1, index2 in
+                            swapApps(index1, index2)
                         },
                         settings: settings
                     )
@@ -136,9 +148,42 @@ struct CircleRingSettingsView: View {
                             .padding(.vertical, 4)
                     }
                 } header: {
-                    Text("应用设置")
+                    Text("应用圆环设置")
                 } footer: {
                     Text("未配置应用的扇区将使用系统默认应用（访达、Safari等）")
+                        .font(.caption)
+                }
+
+                Section {
+                    Picker("网站扇区数量", selection: $settings.circleRingWebsiteSectorCount) {
+                        ForEach(4...12, id: \.self) { count in
+                            Text("\(count)").tag(count)
+                        }
+                    }
+                    .onChange(of: settings.circleRingWebsiteSectorCount) { _ in
+                        CircleRingController.shared.reloadCircleRing()
+                    }
+
+                    CircleRingSectorVisualizer(
+                        sectorCount: settings.circleRingWebsiteSectorCount,
+                        apps: getConfiguredWebsites(),
+                        selectedIndex: $selectedWebsiteSectorIndex,
+                        selectionHint: "拖拽图标调整位置 • 点击扇区配置网站",
+                        onSelectSector: { index in
+                            selectedWebsiteSectorIndex = index
+                            websiteSelectorSector = WebsiteSectorSelection(index: index)
+                        },
+                        onSwapSectors: { index1, index2 in
+                            swapWebsites(index1, index2)
+                        },
+                        settings: settings
+                    )
+                    .frame(height: 250)
+                    .padding(.vertical, 10)
+                } header: {
+                    Text("网站圆环设置")
+                } footer: {
+                    Text("按住 Option + Command 时显示网站圆环；点击扇区可编辑网址，拖拽图标可调整顺序。")
                         .font(.caption)
                 }
                 
@@ -718,6 +763,7 @@ struct CircleRingSettingsView: View {
                     Text("1. 在任意位置按住 Option 键，圆环会出现在鼠标周围")
                     Text("2. 将鼠标移动到想要打开的应用图标上")
                     Text("3. 松开 Option 键即可打开对应的应用")
+                    Text("4. 按住 Option + Command 时，会显示网站圆环并在松开后打开网站")
                 } header: {
                     Text("使用说明")
                 }
@@ -730,6 +776,17 @@ struct CircleRingSettingsView: View {
                 selectedBundleId: currentBundleId(for: selection.index)
             ) { bundleId, _ in
                 updateAppForSector(selection.index, bundleId: bundleId)
+            }
+        }
+        .sheet(item: $websiteSelectorSector) { selection in
+            CircleRingWebsiteBindingView(
+                sectorIndex: selection.index,
+                currentWebsite: currentWebsite(for: selection.index),
+                onClear: {
+                    clearWebsiteForSector(selection.index)
+                }
+            ) { website in
+                updateWebsiteForSector(selection.index, website: website)
             }
         }
         .onAppear {
@@ -849,7 +906,164 @@ struct CircleRingSettingsView: View {
         appSelectorSector = nil
         CircleRingController.shared.reloadCircleRing()
     }
-    
+
+    private func swapApps(_ index1: Int, _ index2: Int) {
+        guard index1 < settings.circleRingSectorCount,
+              index2 < settings.circleRingSectorCount,
+              index1 != index2 else {
+            return
+        }
+
+        var circleRingApps = settings.circleRingApps
+
+        if circleRingApps.isEmpty {
+            let defaultApps = getConfiguredApps().prefix(settings.circleRingSectorCount).map { $0.bundleId }
+            circleRingApps = defaultApps.filter { !$0.hasPrefix("empty.") && !$0.hasPrefix("placeholder.") }
+        }
+
+        while circleRingApps.count <= max(index1, index2) {
+            circleRingApps.append("")
+        }
+
+        let app1 = circleRingApps[index1]
+        let app2 = circleRingApps[index2]
+
+        if app1.isEmpty && !app2.isEmpty {
+            circleRingApps[index1] = app2
+            circleRingApps[index2] = ""
+        } else if !app1.isEmpty && app2.isEmpty {
+            circleRingApps[index2] = app1
+            circleRingApps[index1] = ""
+        } else {
+            circleRingApps[index1] = app2
+            circleRingApps[index2] = app1
+        }
+
+        while !circleRingApps.isEmpty && circleRingApps.last?.isEmpty == true {
+            circleRingApps.removeLast()
+        }
+
+        settings.circleRingApps = circleRingApps
+        settings.saveSettings()
+        CircleRingController.shared.reloadCircleRing()
+    }
+
+    private func currentWebsite(for sectorIndex: Int) -> Website? {
+        guard sectorIndex < settings.circleRingWebsites.count else {
+            return nil
+        }
+
+        guard let websiteId = UUID(uuidString: settings.circleRingWebsites[sectorIndex]) else {
+            return nil
+        }
+        return websiteManager.getWebsites().first { $0.id == websiteId }
+    }
+
+    private func getConfiguredWebsites() -> [AppInfo] {
+        let configuredWebsiteIds = settings.circleRingWebsites
+        let sectorCount = settings.circleRingWebsiteSectorCount
+        let websitesById = Dictionary(uniqueKeysWithValues: websiteManager.getWebsites().map { ($0.id, $0) })
+        let fallbackIcon = NSImage(systemSymbolName: "globe", accessibilityDescription: "Website") ?? NSImage()
+
+        var websites: [AppInfo] = []
+
+        for i in 0..<sectorCount {
+            if i < configuredWebsiteIds.count,
+               let websiteId = UUID(uuidString: configuredWebsiteIds[i]),
+               let website = websitesById[websiteId],
+               let websiteURL = URL(string: website.url) {
+                let icon = WebIconManager.shared.icon(for: website.id) ?? fallbackIcon
+                if WebIconManager.shared.icon(for: website.id) == nil {
+                    WebIconManager.shared.loadIcon(for: website)
+                }
+                websites.append(
+                    AppInfo(
+                        bundleId: "website.\(website.id.uuidString)",
+                        name: website.displayName,
+                        icon: icon,
+                        url: websiteURL
+                    )
+                )
+            } else {
+                websites.append(AppInfo(bundleId: "empty.website.\(i)", name: "未配置", icon: fallbackIcon, url: nil))
+            }
+        }
+
+        return websites
+    }
+
+    private func updateWebsiteForSector(_ sectorIndex: Int, website: Website) {
+        var updatedWebsites = settings.circleRingWebsites
+        while updatedWebsites.count <= sectorIndex {
+            updatedWebsites.append("")
+        }
+
+        updatedWebsites[sectorIndex] = website.id.uuidString
+
+        while !updatedWebsites.isEmpty,
+              updatedWebsites.last?.isEmpty == true {
+            updatedWebsites.removeLast()
+        }
+
+        settings.circleRingWebsites = updatedWebsites
+        settings.saveSettings()
+        websiteSelectorSector = nil
+        CircleRingController.shared.reloadCircleRing()
+    }
+
+    private func clearWebsiteForSector(_ sectorIndex: Int) {
+        guard sectorIndex < settings.circleRingWebsites.count else {
+            return
+        }
+
+        var updatedWebsites = settings.circleRingWebsites
+        updatedWebsites[sectorIndex] = ""
+
+        while !updatedWebsites.isEmpty,
+              updatedWebsites.last?.isEmpty == true {
+            updatedWebsites.removeLast()
+        }
+
+        settings.circleRingWebsites = updatedWebsites
+        settings.saveSettings()
+        CircleRingController.shared.reloadCircleRing()
+    }
+
+    private func swapWebsites(_ index1: Int, _ index2: Int) {
+        guard index1 < settings.circleRingWebsiteSectorCount,
+              index2 < settings.circleRingWebsiteSectorCount,
+              index1 != index2 else {
+            return
+        }
+
+        var websites = settings.circleRingWebsites
+        while websites.count <= max(index1, index2) {
+            websites.append("")
+        }
+
+        let website1 = websites[index1]
+        let website2 = websites[index2]
+
+        if website1.isEmpty && !website2.isEmpty {
+            websites[index1] = website2
+            websites[index2] = ""
+        } else if !website1.isEmpty && website2.isEmpty {
+            websites[index2] = website1
+            websites[index1] = ""
+        } else {
+            websites[index1] = website2
+            websites[index2] = website1
+        }
+
+        while !websites.isEmpty && websites.last?.isEmpty == true {
+            websites.removeLast()
+        }
+
+        settings.circleRingWebsites = websites
+        settings.saveSettings()
+        CircleRingController.shared.reloadCircleRing()
+    }
+
     // 加载已安装的应用
     private func loadInstalledApps() {
         // 避免重复加载
@@ -1133,7 +1347,9 @@ struct CircleRingSectorVisualizer: View {
     let sectorCount: Int
     let apps: [AppInfo]
     @Binding var selectedIndex: Int?
+    let selectionHint: String
     let onSelectSector: (Int) -> Void
+    let onSwapSectors: (Int, Int) -> Void
     @State private var hoveredIndex: Int? = nil
     @Environment(\.colorScheme) var colorScheme
     @ObservedObject var settings: AppSettings
@@ -1225,7 +1441,7 @@ struct CircleRingSectorVisualizer: View {
                             Spacer()
                             HStack {
                                 Spacer()
-                                Text("拖拽图标调整位置 • 点击扇区选择应用")
+                                Text(selectionHint)
                                     .font(.caption)
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 12)
@@ -1482,7 +1698,7 @@ struct CircleRingSectorVisualizer: View {
         
         // 如果拖拽到了不同的扇区，交换应用位置
         if closestIndex != draggedIndex && minDistance < maxIconSize * 2 {
-            swapApps(draggedIndex, closestIndex)
+            onSwapSectors(draggedIndex, closestIndex)
             
             // 强触觉反馈表示交换成功
             if HapticFeedbackManager.shared.isHapticFeedbackSupported {
@@ -1499,68 +1715,6 @@ struct CircleRingSectorVisualizer: View {
             self.hoveredIndex = nil
         }
     }
-    
-    // 交换两个应用位置
-    private func swapApps(_ index1: Int, _ index2: Int) {
-        // 确保我们正在处理的是有效的索引
-        guard index1 < sectorCount && index2 < sectorCount && index1 != index2 else {
-            print("[CircleRingSectorVisualizer] 交换应用失败：无效的索引 \(index1), \(index2)")
-            return
-        }
-        
-        // 获取当前应用列表配置
-        var circleRingApps = settings.circleRingApps
-        
-        // 如果是空数组且正在使用默认应用，则首先创建一个完整的默认应用列表
-        if circleRingApps.isEmpty {
-            // 获取默认应用的 bundleIds
-            let defaultApps = apps.prefix(sectorCount).map { $0.bundleId }
-            // 过滤掉占位符应用
-            circleRingApps = defaultApps.filter { !$0.hasPrefix("empty.") && !$0.hasPrefix("placeholder.") }
-            print("[CircleRingSectorVisualizer] 从默认应用创建初始配置: \(circleRingApps)")
-        }
-        
-        // 确保数组有足够的容量
-        while circleRingApps.count <= max(index1, index2) {
-            circleRingApps.append("")
-        }
-        
-        // 执行应用交换
-        let app1 = circleRingApps[index1]
-        let app2 = circleRingApps[index2]
-        
-        // 如果应用1是空的而应用2不是，则移动应用2到应用1的位置，应用2位置变空
-        if app1.isEmpty && !app2.isEmpty {
-            circleRingApps[index1] = app2
-            circleRingApps[index2] = ""
-            print("[CircleRingSectorVisualizer] 移动应用: \(app2) 从 \(index2) 到 \(index1)")
-        }
-        // 如果应用2是空的而应用1不是，则移动应用1到应用2的位置，应用1位置变空
-        else if !app1.isEmpty && app2.isEmpty {
-            circleRingApps[index2] = app1
-            circleRingApps[index1] = ""
-            print("[CircleRingSectorVisualizer] 移动应用: \(app1) 从 \(index1) 到 \(index2)")
-        }
-        // 如果两个位置都有应用，则交换它们
-        else {
-            circleRingApps[index1] = app2
-            circleRingApps[index2] = app1
-            print("[CircleRingSectorVisualizer] 交换应用: \(app1) <-> \(app2)")
-        }
-        
-        // 移除末尾的空字符串
-        while !circleRingApps.isEmpty && circleRingApps.last?.isEmpty == true {
-            circleRingApps.removeLast()
-        }
-        
-        // 更新设置并保存
-        settings.circleRingApps = circleRingApps
-        settings.saveSettings()
-        
-        // 重新加载圆环以应用新的配置
-        CircleRingController.shared.reloadCircleRing()
-    }
-    
     // 计算扇区起始角度
     private func startAngle(for index: Int) -> CGFloat {
         let angleSlice = 2 * .pi / CGFloat(sectorCount)
@@ -1672,6 +1826,99 @@ struct SectorShapePreview: Shape {
         path.closeSubpath()
         
         return path
+    }
+}
+
+struct CircleRingWebsiteBindingView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var websiteManager = WebsiteManager.shared
+
+    let sectorIndex: Int
+    let currentWebsite: Website?
+    let onClear: (() -> Void)?
+    let onSelect: (Website) -> Void
+
+    @State private var urlText: String = ""
+    @State private var showInvalidURLAlert = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("配置网站扇区")
+                .font(.headline)
+
+            Text("扇区 \(sectorIndex + 1)")
+                .foregroundColor(.secondary)
+
+            TextField("输入网站网址（如 https://example.com）", text: $urlText)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Button("取消") {
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
+
+                if currentWebsite != nil {
+                    Button("清除") {
+                        onClear?()
+                        dismiss()
+                    }
+                    .buttonStyle(.bordered)
+                    .foregroundColor(.red)
+                }
+
+                Spacer()
+
+                Button("保存") {
+                    saveWebsite()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 420)
+        .onAppear {
+            urlText = currentWebsite?.url ?? ""
+        }
+        .alert("网址无效", isPresented: $showInvalidURLAlert) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text("请输入有效的网址")
+        }
+    }
+
+    private func normalizeURL(_ raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if let url = URL(string: trimmed), url.host != nil {
+            return url.absoluteString
+        }
+
+        let withScheme = "https://\(trimmed)"
+        if let url = URL(string: withScheme), url.host != nil {
+            return url.absoluteString
+        }
+
+        return nil
+    }
+
+    private func saveWebsite() {
+        guard let normalized = normalizeURL(urlText) else {
+            showInvalidURLAlert = true
+            return
+        }
+
+        if let website = websiteManager.getWebsites().first(where: { $0.url == normalized }) {
+            onSelect(website)
+        } else {
+            let website = Website(url: normalized)
+            websiteManager.addWebsite(website)
+            onSelect(website)
+        }
+
+        dismiss()
     }
 }
 

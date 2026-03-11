@@ -555,10 +555,23 @@ class AppSettings: ObservableObject {
             saveSettings()
         }
     }
+
+    @Published var circleRingWebsiteSectorCount: Int = 6 {
+        didSet {
+            saveSettings()
+        }
+    }
     
     @Published var circleRingApps: [String] = [] {
         didSet {
             print("[AppSettings] 圆环应用更新: \(oldValue.count) -> \(circleRingApps.count)")
+            saveSettings()
+        }
+    }
+
+    @Published var circleRingWebsites: [String] = [] {
+        didSet {
+            print("[AppSettings] 圆环网站更新: \(oldValue.count) -> \(circleRingWebsites.count)")
             saveSettings()
         }
     }
@@ -829,7 +842,9 @@ class AppSettings: ObservableObject {
     private let circleRingIconSizeKey = "CircleRingIconSize"
     private let circleRingIconCornerRadiusKey = "CircleRingIconCornerRadius"
     private let circleRingSectorCountKey = "CircleRingSectorCount"
+    private let circleRingWebsiteSectorCountKey = "CircleRingWebsiteSectorCount"
     private let circleRingAppsKey = "CircleRingApps"
+    private let circleRingWebsitesKey = "CircleRingWebsites"
     private let circleRingThemeKey = "CircleRingTheme"
     private let circleRingInnerDiameterKey = "CircleRingInnerDiameter"
     private let useSectorHighlightKey = "UseSectorHighlight"
@@ -1257,6 +1272,14 @@ class AppSettings: ObservableObject {
             print("[AppSettings] 未找到已保存的圆环应用")
             circleRingApps = []
         }
+
+        if let websiteIdStrings = UserDefaults.standard.array(forKey: circleRingWebsitesKey) as? [String] {
+            circleRingWebsites = websiteIdStrings
+            print("[AppSettings] 加载了 \(circleRingWebsites.count) 个圆环网站")
+        } else {
+            print("[AppSettings] 未找到已保存的圆环网站")
+            circleRingWebsites = []
+        }
         
         // 加载圆环直径
         circleRingDiameter = UserDefaults.standard.double(forKey: circleRingDiameterKey)
@@ -1291,6 +1314,12 @@ class AppSettings: ObservableObject {
         if !UserDefaults.standard.contains(key: circleRingSectorCountKey) {
             circleRingSectorCount = 6
             UserDefaults.standard.set(6, forKey: circleRingSectorCountKey)
+        }
+
+        circleRingWebsiteSectorCount = UserDefaults.standard.integer(forKey: circleRingWebsiteSectorCountKey)
+        if !UserDefaults.standard.contains(key: circleRingWebsiteSectorCountKey) {
+            circleRingWebsiteSectorCount = 6
+            UserDefaults.standard.set(6, forKey: circleRingWebsiteSectorCountKey)
         }
         
         // 加载圆环内圆自定义图片设置
@@ -1453,8 +1482,11 @@ class AppSettings: ObservableObject {
         UserDefaults.standard.set(circleRingIconSize, forKey: circleRingIconSizeKey)
         UserDefaults.standard.set(circleRingIconCornerRadius, forKey: circleRingIconCornerRadiusKey)
         UserDefaults.standard.set(circleRingSectorCount, forKey: circleRingSectorCountKey)
+        UserDefaults.standard.set(circleRingWebsiteSectorCount, forKey: circleRingWebsiteSectorCountKey)
         UserDefaults.standard.set(circleRingApps, forKey: circleRingAppsKey)
         print("[AppSettings] 保存 \(circleRingApps.count) 个圆环应用: \(circleRingApps)")
+        UserDefaults.standard.set(circleRingWebsites, forKey: circleRingWebsitesKey)
+        print("[AppSettings] 保存 \(circleRingWebsites.count) 个圆环网站: \(circleRingWebsites)")
         UserDefaults.standard.set(circleRingTheme.rawValue, forKey: circleRingThemeKey)
         UserDefaults.standard.set(circleRingInnerDiameter, forKey: circleRingInnerDiameterKey)
         UserDefaults.standard.set(useSectorHighlight, forKey: useSectorHighlightKey)

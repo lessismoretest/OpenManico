@@ -117,6 +117,7 @@ class HapticFeedbackManager {
 struct CircleRingView: View {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var circleController = CircleRingController.shared
+    @ObservedObject private var webIconManager = WebIconManager.shared
     @State private var hoveredIndex: Int? = nil
     @State var apps: [AppInfo] = []
     @State var selectedIndex: Int? = nil
@@ -226,11 +227,17 @@ struct CircleRingView: View {
     
     // 记录当前鼠标在哪个扇区
     private var currentSectorIndex: Int = -1
+
+    private var activeSectorCount: Int {
+        circleController.contentMode == .websites
+            ? settings.circleRingWebsiteSectorCount
+            : settings.circleRingSectorCount
+    }
     
     // 计算智能节流间隔 - 根据圆环大小和扇区数量动态调整
     private var throttleInterval: TimeInterval {
         let baseFactor = min(1.0, Double(settings.circleRingDiameter) / 500.0) // 直径越小，节流越短
-        let sectorFactor = min(1.0, Double(12) / Double(settings.circleRingSectorCount)) // 扇区越多，节流越短
+        let sectorFactor = min(1.0, Double(12) / Double(activeSectorCount)) // 扇区越多，节流越短
         
         // 计算最终节流间隔，范围在8-15ms之间
         return max(0.008, min(0.015, baseThrottleInterval * baseFactor * sectorFactor))
@@ -330,7 +337,7 @@ struct CircleRingView: View {
                 }
                 
                 // 应用图标
-                ForEach(0..<min(settings.circleRingSectorCount, apps.count), id: \.self) { index in
+                ForEach(0..<min(activeSectorCount, apps.count), id: \.self) { index in
                     appIconView(for: index)
                         .opacity(settings.useCircleRingAnimation ? 
                                 (settings.iconAppearAnimationType != .none ? 
@@ -479,8 +486,8 @@ struct CircleRingView: View {
                 
                 // 重置图标显示状态
                 if settings.iconAppearAnimationType != .none {
-                    showIcons = Array(repeating: false, count: min(settings.circleRingSectorCount, apps.count))
-                    iconScales = Array(repeating: 0.5, count: min(settings.circleRingSectorCount, apps.count))
+                    showIcons = Array(repeating: false, count: min(activeSectorCount, apps.count))
+                    iconScales = Array(repeating: 0.5, count: min(activeSectorCount, apps.count))
                 }
                 
                 // 延迟一点点再开始动画
@@ -494,7 +501,7 @@ struct CircleRingView: View {
                     if settings.iconAppearAnimationType != .none {
                         // 圆环展开后开始图标动画 - 减少延迟从0.3秒到0.15秒
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            let iconCount = min(settings.circleRingSectorCount, apps.count)
+                            let iconCount = min(activeSectorCount, apps.count)
                             
                             // 根据动效类型确定图标显示顺序
                             let indices: [Int]
@@ -567,8 +574,8 @@ struct CircleRingView: View {
                     
                     // 重置图标显示状态
                     if settings.iconAppearAnimationType != .none {
-                        self.showIcons = Array(repeating: false, count: min(settings.circleRingSectorCount, self.apps.count))
-                        self.iconScales = Array(repeating: 0.5, count: min(settings.circleRingSectorCount, self.apps.count))
+                        self.showIcons = Array(repeating: false, count: min(activeSectorCount, self.apps.count))
+                        self.iconScales = Array(repeating: 0.5, count: min(activeSectorCount, self.apps.count))
                     }
                     
                     // 立即应用动画
@@ -582,7 +589,7 @@ struct CircleRingView: View {
                         if settings.iconAppearAnimationType != .none {
                             // 圆环展开后开始图标动画 - 减少延迟从0.3秒到0.15秒
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                let iconCount = min(settings.circleRingSectorCount, self.apps.count)
+                                let iconCount = min(activeSectorCount, self.apps.count)
                                 
                                 // 根据动效类型确定图标显示顺序
                                 let indices: [Int]
@@ -642,6 +649,24 @@ struct CircleRingView: View {
             NotificationCenter.default.removeObserver(self, name: NSNotification.Name("ForceUpdateMousePosition"), object: nil)
             NotificationCenter.default.removeObserver(self, name: NSNotification.Name("CircleRingDidAppear"), object: nil)
         }
+        .onChange(of: circleController.contentMode) { _ in
+            loadApps()
+        }
+        .onChange(of: settings.circleRingApps) { _ in
+            if circleController.contentMode == .apps {
+                loadApps()
+            }
+        }
+        .onChange(of: settings.circleRingWebsites) { _ in
+            if circleController.contentMode == .websites {
+                loadApps()
+            }
+        }
+        .onChange(of: settings.circleRingWebsiteSectorCount) { _ in
+            if circleController.contentMode == .websites {
+                loadApps()
+            }
+        }
     }
     
     // 处理鼠标移动 - 入口函数
@@ -699,7 +724,7 @@ struct CircleRingView: View {
         let distance = sqrt(relativeX * relativeX + relativeY * relativeY)
         
         // 获取扇区总数
-        let totalSectors = min(settings.circleRingSectorCount, apps.count)
+        let totalSectors = min(activeSectorCount, apps.count)
         if totalSectors == 0 {
             // 没有应用，不处理扇区
             return
@@ -861,6 +886,12 @@ struct CircleRingView: View {
     
     // 加载应用列表
     func loadApps() {
+        if circleController.contentMode == .websites {
+            loadWebsites()
+            print("[CircleRingView] 最终加载了 \(apps.count) 个网站")
+            return
+        }
+
         let configuredApps = settings.circleRingApps
         if !configuredApps.isEmpty {
             // 使用用户配置的应用
@@ -891,6 +922,45 @@ struct CircleRingView: View {
         }
         
         print("[CircleRingView] 最终加载了 \(apps.count) 个应用")
+    }
+
+    private func loadWebsites() {
+        let websiteManager = WebsiteManager.shared
+        let websitesById = Dictionary(uniqueKeysWithValues: websiteManager.getWebsites().map { ($0.id, $0) })
+        let configuredWebsiteIds = settings.circleRingWebsites.compactMap(UUID.init(uuidString:))
+
+        guard !configuredWebsiteIds.isEmpty else {
+            apps = []
+            print("[CircleRingView] 用户未配置网站圆环")
+            return
+        }
+
+        let fallbackIcon = NSImage(
+            systemSymbolName: "globe",
+            accessibilityDescription: "Website"
+        ) ?? NSImage()
+
+        apps = configuredWebsiteIds.compactMap { websiteId in
+            guard let website = websitesById[websiteId],
+                  let websiteURL = URL(string: website.url) else {
+                print("[CircleRingView] ⚠️ 无法加载网站，ID: \(websiteId.uuidString)")
+                return nil
+            }
+
+            let icon = webIconManager.icon(for: website.id) ?? fallbackIcon
+            if webIconManager.icon(for: website.id) == nil {
+                webIconManager.loadIcon(for: website) { _ in
+                    self.loadApps()
+                }
+            }
+
+            return AppInfo(
+                bundleId: "website.\(website.id.uuidString)",
+                name: website.displayName,
+                icon: icon,
+                url: websiteURL
+            )
+        }
     }
     
     private func loadDefaultApps() {
@@ -936,7 +1006,7 @@ struct CircleRingView: View {
     
     // 创建单个应用图标视图
     private func appIconView(for index: Int) -> some View {
-        let totalCount = min(settings.circleRingSectorCount, apps.count)
+        let totalCount = min(activeSectorCount, apps.count)
         let app = apps[index]
         let position = positionForIndex(index, totalCount: totalCount)
         let iconSize = settings.circleRingIconSize
@@ -978,7 +1048,7 @@ struct CircleRingView: View {
     
     // 创建扇区高亮形状
     private func sectorHighlightShape(for index: Int) -> some Shape {
-        let totalCount = min(settings.circleRingSectorCount, apps.count)
+        let totalCount = min(activeSectorCount, apps.count)
         let angleSlice = 2 * .pi / CGFloat(totalCount)
         
         // 重要：使用与handleMouseMoved完全相同的角度计算逻辑
@@ -1086,6 +1156,14 @@ struct CircleRingView: View {
         // 隐藏圆环
         circleController.hideCircleRing()
         
+        // 网站模式直接打开 URL
+        if app.bundleId.hasPrefix("website."), let url = app.url {
+            NSWorkspace.shared.open(url)
+            settings.incrementUsageCount(type: .circleRing)
+            print("[CircleRingView] 打开网站: \(app.name) -> \(url.absoluteString)")
+            return
+        }
+
         // 打开应用
         if let url = app.url {
             print("[CircleRingView] 正在尝试打开应用: \(app.name) (\(app.bundleId)), 路径: \(url.path)")
