@@ -127,7 +127,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 object: nil,
                 queue: .main) { [weak self] _ in
                     print("[AppDelegate] 应用变为活跃状态，确保圆环控制器正常")
-                    self?.ensureCircleRingControllerInitialized()
+                    if self?.circleRingController == nil {
+                        self?.ensureCircleRingControllerInitialized()
+                    } else {
+                        self?.circleRingController?.resetTransientState()
+                    }
                 }
         } else {
             print("[AppDelegate] ⚠️ 圆环控制器初始化失败")
@@ -141,16 +145,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             initializeCircleRingController()
         } else {
             print("[AppDelegate] 圆环控制器已存在")
-            
-            // 如果圆环控制器已存在，尝试重置以确保事件监听正常
-            circleRingController?.reloadCircleRing()
+            circleRingController?.resetTransientState()
         }
     }
     
     // 设置设置变更监听器
     private func setupSettingsObserver() {
         settingsObserver = NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
+            forName: NSNotification.Name("SettingsChanged"),
             object: nil,
             queue: .main
         ) { [weak self] _ in

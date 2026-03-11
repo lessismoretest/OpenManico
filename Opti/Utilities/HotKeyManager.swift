@@ -16,6 +16,12 @@ class HotKeyManager: ObservableObject {
     private var websiteManager = WebsiteManager.shared
     private var appSwitchObserver: Any?
     private var currentApp: NSRunningApplication?
+    private var optionClickLastPressTime = Date.distantPast
+    private var optionClickLastReleaseTime = Date.distantPast
+    private var optionClickCount = 0
+    private var optionClickPotentialDoubleClick = false
+    private var optionSingleClickTimer: Timer?
+    private var optionClickJustHandledDoubleClick = false
     
     // 数字键的键码映射
     private let numberKeyCodes: [Int: Int] = [
@@ -89,14 +95,6 @@ class HotKeyManager: ObservableObject {
     }
     
     private func setupOptionKeyMonitor() {
-        // 添加变量用于区分短按和双击
-        var lastPressTime = Date()
-        var lastReleaseTime = Date()
-        var clickCount = 0
-        var potentialDoubleClick = false // 标记是否可能为双击
-        var singleClickTimer: Timer? // 单击延迟处理计时器
-        var justHandledDoubleClick = false // 标记是否刚处理完双击事件
-        
         optionKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
             guard let self = self else { return }
             let optionKeyPressed = event.modifierFlags.contains(.option)
@@ -106,41 +104,57 @@ class HotKeyManager: ObservableObject {
                 self.isOptionKeyPressed = optionKeyPressed
                 
                 if optionKeyPressed {
+                    guard AppSettings.shared.switchToLastAppWithOptionClick else {
+                        self.resetOptionClickDetectionState()
+                        return
+                    }
+                    
                     // ========== Option键被按下 ==========
                     let now = Date()
-                    let timeSinceLastRelease = now.timeIntervalSince(lastReleaseTime)
-                    lastPressTime = now
+                    let timeSinceLastRelease = now.timeIntervalSince(self.optionClickLastReleaseTime)
+                    self.optionClickLastPressTime = now
                     
                     // 重置刚处理双击的标记
-                    if justHandledDoubleClick {
+                    if self.optionClickJustHandledDoubleClick {
                         print("👆 重置双击处理标记")
-                        justHandledDoubleClick = false
+                        self.optionClickJustHandledDoubleClick = false
                     }
                     
                     // 取消之前的定时器
-                    singleClickTimer?.invalidate()
+                    self.optionSingleClickTimer?.invalidate()
+                    self.optionSingleClickTimer = nil
                     
                     // 如果距上次释放时间小于0.5秒，可能是双击
                     if timeSinceLastRelease < 0.5 {
-                        clickCount += 1
-                        potentialDoubleClick = true
-                        print("⚡ 检测到可能的双击: 点击计数=\(clickCount)")
+                        self.optionClickCount += 1
+                        self.optionClickPotentialDoubleClick = true
+                        print("⚡ 检测到可能的双击: 点击计数=\(self.optionClickCount)")
                     } else {
-                        clickCount = 1 // 重置点击计数
-                        potentialDoubleClick = false
+                        self.optionClickCount = 1
+                        self.optionClickPotentialDoubleClick = false
                         print("👇 首次点击或距离上次释放时间较长")
                     }
                 } else {
+                    guard AppSettings.shared.switchToLastAppWithOptionClick else {
+                        self.resetOptionClickDetectionState()
+                        return
+                    }
+                    
                     // ========== Option键被松开 ==========
-                    lastReleaseTime = Date()
-                    let pressDuration = lastReleaseTime.timeIntervalSince(lastPressTime)
+                    self.optionClickLastReleaseTime = Date()
+                    let pressDuration = self.optionClickLastReleaseTime.timeIntervalSince(self.optionClickLastPressTime)
                     
                     // 双击检测：按下和松开的时间间隔短，且点击次数多于1次
-                    let isDoubleClick = clickCount >= 2 && pressDuration < 0.3
+                    let isDoubleClick = self.optionClickCount >= 2 && pressDuration < 0.3
+                    if isDoubleClick {
+                        self.optionClickJustHandledDoubleClick = true
+                    }
                     
-                    if pressDuration < 0.3 && !potentialDoubleClick {
+                    if pressDuration < 0.3 && !self.optionClickPotentialDoubleClick {
                         // 单击处理（如果是单击且不是双击的第一次点击）
-                        singleClickTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                        self.optionSingleClickTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                            self.optionSingleClickTimer = nil
+                            
                             // 如果是短按并且启用了切换应用功能
                             if AppSettings.shared.switchToLastAppWithOptionClick {
                                 print("🔍 单击检测：处理应用切换")
@@ -177,6 +191,16 @@ class HotKeyManager: ObservableObject {
                 }
             }
         }
+    }
+
+    private func resetOptionClickDetectionState() {
+        optionSingleClickTimer?.invalidate()
+        optionSingleClickTimer = nil
+        optionClickCount = 0
+        optionClickPotentialDoubleClick = false
+        optionClickJustHandledDoubleClick = false
+        optionClickLastPressTime = Date.distantPast
+        optionClickLastReleaseTime = Date.distantPast
     }
     
     private func setupEventHandler() {
@@ -489,6 +513,8 @@ class HotKeyManager: ObservableObject {
     
     // 处理设置变化
     private func handleSettingsChanged() {
-        // 设置变化处理
+        if !AppSettings.shared.switchToLastAppWithOptionClick {
+            resetOptionClickDetectionState()
+        }
     }
-} 
+}

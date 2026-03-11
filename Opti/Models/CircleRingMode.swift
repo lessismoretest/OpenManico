@@ -51,6 +51,9 @@ class CircleRingController: ObservableObject {
     
     // 发布被选中的应用索引
     @Published var selectedAppIndex: Int? = nil
+
+    // 记录上一次观察到的 Option 状态，避免重复处理同一 flagsChanged
+    private var lastObservedOptionState = false
     
     // 添加设置引用
     private var settings: AppSettings {
@@ -89,10 +92,9 @@ class CircleRingController: ObservableObject {
     
     // 设置事件监听器
     private func setupEventMonitors() {
-        // 本地事件监听器 - 处理按键按下和释放
-        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
-            self?.handleKeyEvent(event)
-            return event
+        // 本地事件监听器保留为空，避免与全局监听重复处理同一 flagsChanged 事件
+        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { event in
+            event
         }
         
         // 全局事件监听器 - 跟踪鼠标位置和键盘事件
@@ -143,6 +145,15 @@ class CircleRingController: ObservableObject {
             // 检查是否按下或释放了Option键
             let isOptionKeyDown = event.modifierFlags.contains(.option)
             let isCommandKeyDown = event.modifierFlags.contains(.command)
+
+            guard isOptionKeyDown != lastObservedOptionState else {
+                if isOptionKeyDown {
+                    contentMode = isCommandKeyDown ? .websites : .apps
+                }
+                return
+            }
+
+            lastObservedOptionState = isOptionKeyDown
 
             if isOptionKeyDown {
                 contentMode = isCommandKeyDown ? .websites : .apps
@@ -593,6 +604,15 @@ class CircleRingController: ObservableObject {
         if isDebugging {
             print("[CircleRingController] 圆环已隐藏")
         }
+    }
+
+    // 在切应用或重建窗口前重置瞬时按键状态，避免遗留的 Option 按下态导致闪烁
+    func resetTransientState() {
+        cancelLongPressTimer()
+        optionKeyPressTime = nil
+        lastObservedOptionState = CGEventSource.flagsState(.combinedSessionState).contains(.maskAlternate)
+        selectedAppIndex = nil
+        iconsAnimationCompleted = false
     }
     
     // 创建圆环窗口
