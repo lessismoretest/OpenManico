@@ -61,6 +61,7 @@ class CircleRingController: ObservableObject {
     }
 
     @Published private(set) var contentMode: ContentMode = .apps
+    private var activeSessionContentMode: ContentMode = .apps
     
     private init() {
         isDebugging = ProcessInfo.processInfo.environment["DEBUG"] == "1"
@@ -147,7 +148,7 @@ class CircleRingController: ObservableObject {
             let isCommandKeyDown = event.modifierFlags.contains(.command)
 
             guard isOptionKeyDown != lastObservedOptionState else {
-                if isOptionKeyDown {
+                if isOptionKeyDown && !isVisible {
                     contentMode = isCommandKeyDown ? .websites : .apps
                 }
                 return
@@ -155,7 +156,7 @@ class CircleRingController: ObservableObject {
 
             lastObservedOptionState = isOptionKeyDown
 
-            if isOptionKeyDown {
+            if isOptionKeyDown && !isVisible {
                 contentMode = isCommandKeyDown ? .websites : .apps
             }
             
@@ -185,7 +186,6 @@ class CircleRingController: ObservableObject {
                         }
                         
                         if pressDuration >= self.longPressThreshold {
-                            self.contentMode = self.currentContentModeFromSystemFlags()
                             // 长按阈值时间后显示圆环
                             self.fixedRingPosition = self.currentMouseLocation // 固定圆环位置
                             self.showCircleRing()
@@ -280,7 +280,7 @@ class CircleRingController: ObservableObject {
                selectedIndex >= 0, 
                selectedIndex < self.selectedItemsCount {
 
-                if self.contentMode == .websites {
+                if self.activeSessionContentMode == .websites {
                     let websites = WebsiteManager.shared.getWebsites()
                     if selectedIndex < AppSettings.shared.circleRingWebsites.count {
                         let websiteIdString = AppSettings.shared.circleRingWebsites[selectedIndex]
@@ -412,7 +412,7 @@ class CircleRingController: ObservableObject {
     }
 
     private var selectedItemsCount: Int {
-        switch contentMode {
+        switch activeSessionContentMode {
         case .apps:
             return AppSettings.shared.circleRingApps.count
         case .websites:
@@ -420,11 +420,6 @@ class CircleRingController: ObservableObject {
         }
     }
 
-    private func currentContentModeFromSystemFlags() -> ContentMode {
-        let flags = CGEventSource.flagsState(.combinedSessionState)
-        return flags.contains(.maskCommand) ? .websites : .apps
-    }
-    
     // 处理鼠标点击
     private func handleMouseClick() {
         // 隐藏圆环
@@ -445,6 +440,7 @@ class CircleRingController: ObservableObject {
         
         // 记录长按使用统计
         AppSettings.shared.incrementUsageCount(type: .optionLongPress)
+        activeSessionContentMode = contentMode
         
         // 获取当前鼠标位置的屏幕
         let mouseLocation = NSEvent.mouseLocation
@@ -600,6 +596,7 @@ class CircleRingController: ObservableObject {
         isVisible = false
         iconsAnimationCompleted = false
         contentMode = .apps
+        activeSessionContentMode = .apps
         
         if isDebugging {
             print("[CircleRingController] 圆环已隐藏")
@@ -613,6 +610,7 @@ class CircleRingController: ObservableObject {
         lastObservedOptionState = CGEventSource.flagsState(.combinedSessionState).contains(.maskAlternate)
         selectedAppIndex = nil
         iconsAnimationCompleted = false
+        activeSessionContentMode = isVisible ? contentMode : .apps
     }
     
     // 创建圆环窗口
